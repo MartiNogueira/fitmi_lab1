@@ -1,6 +1,6 @@
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
-const pool = require('../db/connection')
+const prisma = require('../db/prisma')
 
 const register = async (req, res) => {
   const { name, email, password } = req.body
@@ -10,23 +10,63 @@ const register = async (req, res) => {
   }
 
   try {
-    const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email])
-    if (existing.rows.length > 0) {
+    const existing = await prisma.usuario.findUnique({ where: { email } })
+    if (existing) {
       return res.status(409).json({ error: 'El email ya está registrado' })
     }
 
     const hash = await bcrypt.hash(password, 10)
-    const result = await pool.query(
-      'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email',
-      [name, email, hash]
-    )
+    const user = await prisma.usuario.create({
+      data: { nombre_usuario: name, email, contrasena: hash },
+      select: { id_usuario: true, nombre_usuario: true, email: true, rol: true, estado: true },
+    })
 
-    const user = result.rows[0]
-    const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '7d' })
-
-    res.status(201).json({ token, user })
+    const token = jwt.sign({ id: user.id_usuario, email: user.email, rol: user.rol }, process.env.JWT_SECRET, { expiresIn: '7d' })
+    res.status(201).json({ token, user: { id: user.id_usuario, name: user.nombre_usuario, email: user.email, rol: user.rol } })
   } catch (err) {
     console.error('Error en register:', err)
+    res.status(500).json({ error: 'Error interno del servidor' })
+  }
+}
+
+const registerProfesional = async (req, res) => {
+  const { name, email, password, especialidad } = req.body
+
+  if (!name || !email || !password || !especialidad) {
+    return res.status(400).json({ error: 'Todos los campos son requeridos' })
+  }
+  if (!['entrenador', 'nutricionista'].includes(especialidad)) {
+    return res.status(400).json({ error: 'Especialidad inválida' })
+  }
+
+  try {
+    const existing = await prisma.usuario.findUnique({ where: { email } })
+    if (existing) {
+      return res.status(409).json({ error: 'El email ya está registrado' })
+    }
+
+    const hash = await bcrypt.hash(password, 10)
+    const user = await prisma.usuario.create({
+      data: { nombre_usuario: name, email, contrasena: hash, rol: especialidad, estado: 'pendiente' },
+      select: { id_usuario: true, nombre_usuario: true, email: true, rol: true },
+    })
+
+    // Notificar a todos los admins
+    const admins = await prisma.usuario.findMany({ where: { rol: 'admin' }, select: { id_usuario: true } })
+    if (admins.length > 0) {
+      await prisma.notificacion.createMany({
+        data: admins.map((admin) => ({
+          destinatario_id: admin.id_usuario,
+          tipo: 'solicitud_profesional',
+          mensaje: `${name} se registró como ${especialidad} y está esperando aprobación.`,
+          data: { profesional_id: user.id_usuario, nombre: name, rol: especialidad, email },
+        })),
+      })
+    }
+
+    res.status(201).json({ message: 'Solicitud enviada. Aguardá la aprobación del administrador.' })
+  } catch (err) {
+    console.error('Error en registerProfesional:', err)
     res.status(500).json({ error: 'Error interno del servidor' })
   }
 }
@@ -39,24 +79,75 @@ const login = async (req, res) => {
   }
 
   try {
-    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email])
-    if (result.rows.length === 0) {
+    const user = await prisma.usuario.findUnique({ where: { email } })
+    if (!user) {
       return res.status(401).json({ error: 'Credenciales inválidas' })
     }
 
-    const user = result.rows[0]
-    const valid = await bcrypt.compare(password, user.password)
+    const valid = await bcrypt.compare(password, user.contrasena)
     if (!valid) {
       return res.status(401).json({ error: 'Credenciales inválidas' })
     }
 
-    const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '7d' })
+    if (user.estado === 'pendiente') {
+      return res.status(403).json({ error: 'Tu cuenta está pendiente de aprobación por el administrador.' })
+    }
+    if (user.estado === 'rechazado') {
+      return res.status(403).json({ error: 'Tu solicitud fue rechazada. Contactá al administrador.' })
+    }
 
-    res.json({ token, user: { id: user.id, name: user.name, email: user.email } })
+    const token = jwt.sign({ id: user.id_usuario, email: user.email, rol: user.rol }, process.env.JWT_SECRET, { expiresIn: '7d' })
+    res.json({ token, user: { id: user.id_usuario, name: user.nombre_usuario, email: user.email, rol: user.rol } })
   } catch (err) {
     console.error('Error en login:', err)
     res.status(500).json({ error: 'Error interno del servidor' })
   }
 }
 
-module.exports = { register, login }
+const updateMe = async (req, res) => {
+  const { name, email, password } = req.body
+  const id = req.user.id
+
+  try {
+    const data = {}
+    if (name) data.nombre_usuario = name
+    if (email) data.email = email
+    if (password) data.contrasena = await bcrypt.hash(password, 10)
+
+    if (Object.keys(data).length === 0) {
+      return res.status(400).json({ error: 'No hay datos para actualizar' })
+    }
+
+    if (email) {
+      const existing = await prisma.usuario.findUnique({ where: { email } })
+      if (existing && existing.id_usuario !== id) {
+        return res.status(409).json({ error: 'El email ya está en uso' })
+      }
+    }
+
+    const user = await prisma.usuario.update({
+      where: { id_usuario: id },
+      data,
+      select: { id_usuario: true, nombre_usuario: true, email: true, rol: true },
+    })
+
+    res.json({ user: { id: user.id_usuario, name: user.nombre_usuario, email: user.email, rol: user.rol } })
+  } catch (err) {
+    console.error('Error en updateMe:', err)
+    res.status(500).json({ error: 'Error interno del servidor' })
+  }
+}
+
+const deleteMe = async (req, res) => {
+  const id = req.user.id
+  try {
+    await prisma.notificacion.deleteMany({ where: { destinatario_id: id } })
+    await prisma.usuario.delete({ where: { id_usuario: id } })
+    res.json({ message: 'Cuenta eliminada' })
+  } catch (err) {
+    console.error('Error en deleteMe:', err)
+    res.status(500).json({ error: 'Error interno del servidor' })
+  }
+}
+
+module.exports = { register, registerProfesional, login, updateMe, deleteMe }

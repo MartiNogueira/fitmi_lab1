@@ -34,6 +34,15 @@ export default function Home() {
         >
           Registrarse
         </Button>
+        <div className="pt-1 border-t border-border text-center">
+          <p className="text-xs text-muted-foreground mb-1">¿Sos profesional?</p>
+          <button
+            onClick={() => navigate('/register-profesional')}
+            className="text-sm text-primary hover:underline font-medium"
+          >
+            Registrate acá
+          </button>
+        </div>
       </div>
       </div>
     </div>

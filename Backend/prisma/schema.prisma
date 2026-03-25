@@ -6,10 +6,37 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Rol {
+  cliente
+  entrenador
+  nutricionista
+  admin
+}
+
+enum Estado {
+  pendiente
+  aprobado
+  rechazado
+}
+
 model Usuario {
-  id_usuario     Int      @id @default(autoincrement())
+  id_usuario     Int            @id @default(autoincrement())
   nombre_usuario String
-  email          String   @unique
+  email          String         @unique
   contrasena     String
-  created_at     DateTime @default(now())
+  rol            Rol            @default(cliente)
+  estado         Estado         @default(aprobado)
+  created_at     DateTime       @default(now())
+  notificaciones Notificacion[] @relation("NotificacionDestinatario")
+}
+
+model Notificacion {
+  id              Int      @id @default(autoincrement())
+  destinatario_id Int
+  destinatario    Usuario  @relation("NotificacionDestinatario", fields: [destinatario_id], references: [id_usuario])
+  tipo            String
+  mensaje         String
+  leida           Boolean  @default(false)
+  data            Json?
+  created_at      DateTime @default(now())
 }

@@ -6,6 +6,7 @@
     "start": "node src/app.js"
   },
   "dependencies": {
+    "@prisma/adapter-pg": "^7.5.0",
     "@prisma/client": "^7.5.0",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
