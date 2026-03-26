@@ -16,8 +16,8 @@ export default function Home() {
           <rect x="20.5" y="11.5" width="2.5" height="9" rx="1" fill="#16a34a"/>
           <rect x="23" y="10" width="4" height="12" rx="2" fill="#22c55e"/>
         </svg>
-        <h1 className="text-4xl font-bold tracking-tight text-foreground">Fitmi</h1>
-        <p className="text-muted-foreground text-sm">Tu app de fitness</p>
+        <h1 className="text-4xl font-bold tracking-tight text-foreground">Fitm<span style={{ color: '#22c55e' }}>i</span></h1>
+        <p className="text-muted-foreground text-sm">¡Empezá hoy a entrenar!</p>
       </div>
 
       <div className="flex flex-col gap-3 w-full max-w-xs">
