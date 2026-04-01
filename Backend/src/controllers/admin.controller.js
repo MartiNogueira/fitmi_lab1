@@ -1,4 +1,4 @@
-const prisma = require('../db/prisma')
+import prisma from '../db/prisma.js';
 
 const getProfesionalesPendientes = async (_req, res) => {
   try {
@@ -58,4 +58,4 @@ const rechazarProfesional = async (req, res) => {
   }
 }
 
-module.exports = { getProfesionalesPendientes, aprobarProfesional, rechazarProfesional }
+export { getProfesionalesPendientes, aprobarProfesional, rechazarProfesional }

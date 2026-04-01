@@ -1,7 +1,7 @@
-const express = require('express')
+import express from 'express';
 const router = express.Router()
-const { register, registerProfesional, login, updateMe, deleteMe } = require('../controllers/auth.controller')
-const authMiddleware = require('../middleware/auth.middleware')
+import { register, registerProfesional, login, updateMe, deleteMe } from '../controllers/auth.controller.js';
+import authMiddleware from '../middleware/auth.middleware.js';
 
 router.post('/register', register)
 router.post('/register-profesional', registerProfesional)
@@ -9,4 +9,4 @@ router.post('/login', login)
 router.put('/me', authMiddleware, updateMe)
 router.delete('/me', authMiddleware, deleteMe)
 
-module.exports = router
+export default router;

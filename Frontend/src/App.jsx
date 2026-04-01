@@ -6,9 +6,21 @@ import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import Profile from './pages/Profile'
 import RegisterProfesional from './pages/RegisterProfesional'
+import AppLayout from './components/AppLayout'
+
 function PrivateRoute({ children }) {
   const { user } = useAuth()
   return user ? children : <Navigate to="/" replace />
+}
+
+function ComingSoon({ title }) {
+  return (
+    <AppLayout>
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground text-sm">{title} — próximamente</p>
+      </div>
+    </AppLayout>
+  )
 }
 
 export default function App() {
@@ -21,6 +33,12 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
           <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
+          <Route path="/rutinas" element={<PrivateRoute><ComingSoon title="Rutinas" /></PrivateRoute>} />
+          <Route path="/ejercicios" element={<PrivateRoute><ComingSoon title="Ejercicios" /></PrivateRoute>} />
+          <Route path="/progreso" element={<PrivateRoute><ComingSoon title="Progreso" /></PrivateRoute>} />
+          <Route path="/comunidad" element={<PrivateRoute><ComingSoon title="Comunidad" /></PrivateRoute>} />
+          <Route path="/mensajes" element={<PrivateRoute><ComingSoon title="Mensajes" /></PrivateRoute>} />
+          <Route path="/mi-entrenador" element={<PrivateRoute><ComingSoon title="Mi entrenador" /></PrivateRoute>} />
           <Route path="/register-profesional" element={<RegisterProfesional />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

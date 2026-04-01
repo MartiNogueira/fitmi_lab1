@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { updateMe, deleteMe } from '../api/auth'
-import Navbar from '../components/Navbar'
+import AppLayout from '../components/AppLayout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -58,9 +58,8 @@ export default function Profile() {
   }
 
   return (
-    <>
-      <Navbar />
-      <div className="min-h-screen flex items-center justify-center px-4 pt-14">
+    <AppLayout>
+      <div className="min-h-screen flex items-center justify-center px-4 pt-16 pb-8">
         <Card className="w-full max-w-sm bg-card border-border">
           <CardHeader className="pb-4">
             <div className="flex items-center gap-3">
@@ -145,6 +144,6 @@ export default function Profile() {
           </CardContent>
         </Card>
       </div>
-    </>
+    </AppLayout>
   )
 }

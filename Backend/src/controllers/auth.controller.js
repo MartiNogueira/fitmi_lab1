@@ -1,6 +1,8 @@
-const bcrypt = require('bcrypt')
-const jwt = require('jsonwebtoken')
-const prisma = require('../db/prisma')
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import prisma from '../db/prisma.js';
+import AuthService from '../services/auth.service.js';
+import { PendingActivationError } from '../errors/auth.errors.js';
 
 const register = async (req, res) => {
   const { name, email, password } = req.body
@@ -79,28 +81,14 @@ const login = async (req, res) => {
   }
 
   try {
-    const user = await prisma.usuario.findUnique({ where: { email } })
-    if (!user) {
-      return res.status(401).json({ error: 'Credenciales inválidas' })
-    }
-
-    const valid = await bcrypt.compare(password, user.contrasena)
-    if (!valid) {
-      return res.status(401).json({ error: 'Credenciales inválidas' })
-    }
-
-    if (user.estado === 'pendiente') {
-      return res.status(403).json({ error: 'Tu cuenta está pendiente de aprobación por el administrador.' })
-    }
-    if (user.estado === 'rechazado') {
-      return res.status(403).json({ error: 'Tu solicitud fue rechazada. Contactá al administrador.' })
-    }
-
-    const token = jwt.sign({ id: user.id_usuario, email: user.email, rol: user.rol }, process.env.JWT_SECRET, { expiresIn: '7d' })
-    res.json({ token, user: { id: user.id_usuario, name: user.nombre_usuario, email: user.email, rol: user.rol } })
+    const { token, user } = await AuthService.login(email, password);
+    res.json({ token, user });
   } catch (err) {
-    console.error('Error en login:', err)
-    res.status(500).json({ error: 'Error interno del servidor' })
+    if (err instanceof PendingActivationError) {
+      return res.status(403).json({ error: err.message });
+    }
+    console.error('Error en login:', err);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 }
 
@@ -150,4 +138,4 @@ const deleteMe = async (req, res) => {
   }
 }
 
-module.exports = { register, registerProfesional, login, updateMe, deleteMe }
+export { register, registerProfesional, login, updateMe, deleteMe };

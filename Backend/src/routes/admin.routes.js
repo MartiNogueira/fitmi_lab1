@@ -1,13 +1,14 @@
-const express = require('express')
-const router = express.Router()
-const { getProfesionalesPendientes, aprobarProfesional, rechazarProfesional } = require('../controllers/admin.controller')
-const authMiddleware = require('../middleware/auth.middleware')
-const adminMiddleware = require('../middleware/admin.middleware')
+import express from 'express';
 
+import { getProfesionalesPendientes, aprobarProfesional, rechazarProfesional } from '../controllers/admin.controller.js';
+import authMiddleware from '../middleware/auth.middleware.js';
+import adminMiddleware from '../middleware/admin.middleware.js';
+
+const router = express.Router()
 router.use(authMiddleware, adminMiddleware)
 
 router.get('/profesionales/pendientes', getProfesionalesPendientes)
 router.put('/profesionales/:id/aprobar', aprobarProfesional)
 router.put('/profesionales/:id/rechazar', rechazarProfesional)
 
-module.exports = router
+export default router

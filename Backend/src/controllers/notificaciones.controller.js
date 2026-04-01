@@ -1,4 +1,4 @@
-const prisma = require('../db/prisma')
+import prisma from '../db/prisma.js';
 
 const getNotificaciones = async (req, res) => {
   try {
@@ -48,4 +48,4 @@ const limpiarNotificaciones = async (req, res) => {
   }
 }
 
-module.exports = { getNotificaciones, marcarLeida, eliminarNotificacion, limpiarNotificaciones }
+export { getNotificaciones, marcarLeida, eliminarNotificacion, limpiarNotificaciones }

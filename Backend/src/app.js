@@ -1,11 +1,13 @@
-const express = require('express')
-const cors = require('cors')
-require('dotenv').config()
-require('./db/connection')
+import express from 'express'
+import cors from 'cors'
+import dotenv from 'dotenv'
 
-const authRoutes = require('./routes/auth.routes')
-const notificacionesRoutes = require('./routes/notificaciones.routes')
-const adminRoutes = require('./routes/admin.routes')
+dotenv.config()
+import * as dbConnection from './db/connection.js'
+
+import authRoutes from './routes/auth.routes.js';
+import notificacionesRoutes from './routes/notificaciones.routes.js';
+import adminRoutes from './routes/admin.routes.js';
 
 const app = express()
 
@@ -18,3 +20,5 @@ app.use('/api/admin', adminRoutes)
 
 const PORT = process.env.PORT || 3000
 app.listen(PORT, () => console.log(`Fitmi server corriendo en puerto ${PORT}`))
+
+// error handler generico

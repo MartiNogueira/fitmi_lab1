@@ -1,11 +1,12 @@
-const express = require('express')
+import express from 'express';
 const router = express.Router()
-const { getNotificaciones, marcarLeida, eliminarNotificacion, limpiarNotificaciones } = require('../controllers/notificaciones.controller')
-const authMiddleware = require('../middleware/auth.middleware')
+
+import { getNotificaciones, marcarLeida, eliminarNotificacion, limpiarNotificaciones } from '../controllers/notificaciones.controller.js';
+import authMiddleware from '../middleware/auth.middleware.js';
 
 router.get('/', authMiddleware, getNotificaciones)
 router.put('/:id/leer', authMiddleware, marcarLeida)
 router.delete('/:id', authMiddleware, eliminarNotificacion)
 router.delete('/', authMiddleware, limpiarNotificaciones)
 
-module.exports = router
+export default router
