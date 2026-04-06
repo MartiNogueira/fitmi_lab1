@@ -7,6 +7,9 @@ import Dashboard from './pages/Dashboard'
 import Profile from './pages/Profile'
 import RegisterProfesional from './pages/RegisterProfesional'
 import AppLayout from './components/AppLayout'
+import Ejercicios from './pages/Ejercicios'
+import Rutinas from './pages/Rutinas'
+import Progreso from './pages/Progreso'
 
 function PrivateRoute({ children }) {
   const { user } = useAuth()
@@ -33,9 +36,9 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
           <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
-          <Route path="/rutinas" element={<PrivateRoute><ComingSoon title="Rutinas" /></PrivateRoute>} />
-          <Route path="/ejercicios" element={<PrivateRoute><ComingSoon title="Ejercicios" /></PrivateRoute>} />
-          <Route path="/progreso" element={<PrivateRoute><ComingSoon title="Progreso" /></PrivateRoute>} />
+          <Route path="/rutinas" element={<PrivateRoute><Rutinas /></PrivateRoute>} />
+          <Route path="/ejercicios" element={<PrivateRoute><Ejercicios /></PrivateRoute>} />
+          <Route path="/progreso" element={<PrivateRoute><Progreso /></PrivateRoute>} />
           <Route path="/comunidad" element={<PrivateRoute><ComingSoon title="Comunidad" /></PrivateRoute>} />
           <Route path="/mensajes" element={<PrivateRoute><ComingSoon title="Mensajes" /></PrivateRoute>} />
           <Route path="/mi-entrenador" element={<PrivateRoute><ComingSoon title="Mi entrenador" /></PrivateRoute>} />

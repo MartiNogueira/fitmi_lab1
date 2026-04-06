@@ -53,7 +53,7 @@ export default function Sidebar() {
                     className={({ isActive }) =>
                       `flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                         isActive
-                          ? 'bg-foreground text-background'
+                          ? 'bg-[#0a1a0a] text-[#22c55e] border border-[#22c55e]/40'
                           : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
                       }`
                     }
