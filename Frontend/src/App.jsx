@@ -10,6 +10,14 @@ import AppLayout from './components/AppLayout'
 import Ejercicios from './pages/Ejercicios'
 import Rutinas from './pages/Rutinas'
 import Progreso from './pages/Progreso'
+import MisAlumnos from './pages/entrenador/MisAlumnos'
+import RutinasEntrenador from './pages/entrenador/RutinasEntrenador'
+import Solicitudes from './pages/entrenador/Solicitudes'
+import MensajesEntrenador from './pages/entrenador/MensajesEntrenador'
+import MisPacientes from './pages/nutricionista/MisPacientes'
+import PlanesAlimenticios from './pages/nutricionista/PlanesAlimenticios'
+import SolicitudesNutricionista from './pages/nutricionista/SolicitudesNutricionista'
+import MensajesNutricionista from './pages/nutricionista/MensajesNutricionista'
 
 function PrivateRoute({ children }) {
   const { user } = useAuth()
@@ -42,6 +50,14 @@ export default function App() {
           <Route path="/comunidad" element={<PrivateRoute><ComingSoon title="Comunidad" /></PrivateRoute>} />
           <Route path="/mensajes" element={<PrivateRoute><ComingSoon title="Mensajes" /></PrivateRoute>} />
           <Route path="/mi-entrenador" element={<PrivateRoute><ComingSoon title="Mi entrenador" /></PrivateRoute>} />
+          <Route path="/entrenador/alumnos" element={<PrivateRoute><MisAlumnos /></PrivateRoute>} />
+          <Route path="/entrenador/rutinas" element={<PrivateRoute><RutinasEntrenador /></PrivateRoute>} />
+          <Route path="/entrenador/solicitudes" element={<PrivateRoute><Solicitudes /></PrivateRoute>} />
+          <Route path="/entrenador/mensajes" element={<PrivateRoute><MensajesEntrenador /></PrivateRoute>} />
+          <Route path="/nutricionista/pacientes" element={<PrivateRoute><MisPacientes /></PrivateRoute>} />
+          <Route path="/nutricionista/planes" element={<PrivateRoute><PlanesAlimenticios /></PrivateRoute>} />
+          <Route path="/nutricionista/solicitudes" element={<PrivateRoute><SolicitudesNutricionista /></PrivateRoute>} />
+          <Route path="/nutricionista/mensajes" element={<PrivateRoute><MensajesNutricionista /></PrivateRoute>} />
           <Route path="/register-profesional" element={<RegisterProfesional />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

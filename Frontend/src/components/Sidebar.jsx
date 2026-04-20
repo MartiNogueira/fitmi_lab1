@@ -1,8 +1,8 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { LayoutGrid, List, Dumbbell, BarChart2, Users, Monitor, User } from 'lucide-react'
+import { LayoutGrid, List, Dumbbell, BarChart2, Users, Monitor, User, Salad, MessageSquare, ClipboardList, Bell } from 'lucide-react'
 
-const nav = [
+const navUsuario = [
   {
     section: 'PRINCIPAL',
     items: [
@@ -10,6 +10,7 @@ const nav = [
       { label: 'Rutinas', path: '/rutinas', icon: List },
       { label: 'Ejercicios', path: '/ejercicios', icon: Dumbbell },
       { label: 'Progreso', path: '/progreso', icon: BarChart2 },
+      { label: 'Alimentación', path: '/alimentacion', icon: Salad },
     ],
   },
   {
@@ -23,13 +24,44 @@ const nav = [
     section: 'PROFESIONAL',
     items: [
       { label: 'Mi entrenador', path: '/mi-entrenador', icon: User },
+      { label: 'Mi nutricionista', path: '/mi-nutricionista', icon: User },
+    ],
+  },
+]
+
+const navEntrenador = [
+  {
+    section: 'PANEL',
+    items: [
+      { label: 'Dashboard', path: '/dashboard', icon: LayoutGrid },
+      { label: 'Mis alumnos', path: '/entrenador/alumnos', icon: Users },
+      { label: 'Rutinas', path: '/entrenador/rutinas', icon: ClipboardList },
+      { label: 'Solicitudes', path: '/entrenador/solicitudes', icon: Bell },
+      { label: 'Mensajes', path: '/entrenador/mensajes', icon: MessageSquare },
+    ],
+  },
+]
+
+const navNutricionista = [
+  {
+    section: 'PANEL NUTRICIONISTA',
+    items: [
+      { label: 'Dashboard', path: '/dashboard', icon: LayoutGrid },
+      { label: 'Mis pacientes', path: '/nutricionista/pacientes', icon: Users },
+      { label: 'Planes alimenticios', path: '/nutricionista/planes', icon: ClipboardList },
+      { label: 'Solicitudes', path: '/nutricionista/solicitudes', icon: Bell },
+      { label: 'Mensajes', path: '/nutricionista/mensajes', icon: MessageSquare },
     ],
   },
 ]
 
 export default function Sidebar() {
-  const { logout } = useAuth()
+  const { logout, user } = useAuth()
   const navigate = useNavigate()
+
+  const nav = user?.rol === 'entrenador' ? navEntrenador
+    : user?.rol === 'nutricionista' ? navNutricionista
+    : navUsuario
 
   return (
     <aside className="fixed left-0 top-0 h-full w-64 flex flex-col bg-background border-r border-border z-20 px-4 py-6">

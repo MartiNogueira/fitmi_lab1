@@ -1,6 +1,8 @@
 import { useAuth } from '../context/AuthContext'
 import AppLayout from '../components/AppLayout'
 import WelcomePopup from '../components/WelcomePopup'
+import DashboardEntrenador from './entrenador/DashboardEntrenador'
+import DashboardNutricionista from './nutricionista/DashboardNutricionista'
 
 const today = new Date()
 const dateLabel = today.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
@@ -37,6 +39,9 @@ const cardStyle = {
 
 export default function Dashboard() {
   const { user } = useAuth()
+
+  if (user?.rol === 'entrenador') return <DashboardEntrenador />
+  if (user?.rol === 'nutricionista') return <DashboardNutricionista />
 
   return (
     <AppLayout>
