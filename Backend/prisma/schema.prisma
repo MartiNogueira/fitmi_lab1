@@ -20,14 +20,38 @@ enum Estado {
 }
 
 model Usuario {
-  id_usuario     Int            @id @default(autoincrement())
-  nombre_usuario String
-  email          String         @unique
-  contrasena     String
-  rol            Rol            @default(cliente)
-  estado         Estado         @default(aprobado)
-  created_at     DateTime       @default(now())
-  notificaciones Notificacion[] @relation("NotificacionDestinatario")
+  id_usuario        Int                @id @default(autoincrement())
+  nombre_usuario    String
+  email             String             @unique
+  contrasena        String
+  rol               Rol                @default(cliente)
+  estado            Estado             @default(aprobado)
+  created_at        DateTime           @default(now())
+  notificaciones    Notificacion[]     @relation("NotificacionDestinatario")
+  planes            PlanAlimenticio[]  @relation("PlanesNutricionista")
+  rutinas           Rutina[]           @relation("RutinasEntrenador")
+}
+
+model PlanAlimenticio {
+  id               Int      @id @default(autoincrement())
+  nombre           String
+  calorias         String
+  objetivo         String
+  comidas          String[]
+  nutricionista_id Int
+  nutricionista    Usuario  @relation("PlanesNutricionista", fields: [nutricionista_id], references: [id_usuario])
+  created_at       DateTime @default(now())
+}
+
+model Rutina {
+  id            Int      @id @default(autoincrement())
+  nombre        String
+  objetivo      String
+  dias          Int
+  ejercicios    String[]
+  entrenador_id Int
+  entrenador    Usuario  @relation("RutinasEntrenador", fields: [entrenador_id], references: [id_usuario])
+  created_at    DateTime @default(now())
 }
 
 model Notificacion {

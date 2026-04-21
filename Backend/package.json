@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "nodemon src/app.js",
+    "dev": "prisma generate && nodemon src/app.js",
     "start": "node src/app.js"
   },
   "dependencies": {

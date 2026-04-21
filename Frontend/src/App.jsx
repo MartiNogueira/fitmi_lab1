@@ -50,6 +50,8 @@ export default function App() {
           <Route path="/comunidad" element={<PrivateRoute><ComingSoon title="Comunidad" /></PrivateRoute>} />
           <Route path="/mensajes" element={<PrivateRoute><ComingSoon title="Mensajes" /></PrivateRoute>} />
           <Route path="/mi-entrenador" element={<PrivateRoute><ComingSoon title="Mi entrenador" /></PrivateRoute>} />
+          <Route path="/mi-nutricionista" element={<PrivateRoute><ComingSoon title="Mi nutricionista" /></PrivateRoute>} />
+          <Route path="/alimentacion" element={<PrivateRoute><ComingSoon title="Alimentación" /></PrivateRoute>} />
           <Route path="/entrenador/alumnos" element={<PrivateRoute><MisAlumnos /></PrivateRoute>} />
           <Route path="/entrenador/rutinas" element={<PrivateRoute><RutinasEntrenador /></PrivateRoute>} />
           <Route path="/entrenador/solicitudes" element={<PrivateRoute><Solicitudes /></PrivateRoute>} />

@@ -42,3 +42,27 @@ export const aprobarProfesional = (id) =>
 
 export const rechazarProfesional = (id) =>
   api.put(`/admin/profesionales/${id}/rechazar`)
+
+export const getPlanes = () =>
+  api.get('/planes')
+
+export const createPlan = (data) =>
+  api.post('/planes', data)
+
+export const updatePlan = (id, data) =>
+  api.put(`/planes/${id}`, data)
+
+export const deletePlan = (id) =>
+  api.delete(`/planes/${id}`)
+
+export const getRutinas = () =>
+  api.get('/rutinas')
+
+export const createRutina = (data) =>
+  api.post('/rutinas', data)
+
+export const updateRutina = (id, data) =>
+  api.put(`/rutinas/${id}`, data)
+
+export const deleteRutina = (id) =>
+  api.delete(`/rutinas/${id}`)
