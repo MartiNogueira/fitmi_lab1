@@ -20,38 +20,102 @@ enum Estado {
 }
 
 model Usuario {
-  id_usuario        Int                @id @default(autoincrement())
-  nombre_usuario    String
-  email             String             @unique
-  contrasena        String
-  rol               Rol                @default(cliente)
-  estado            Estado             @default(aprobado)
-  created_at        DateTime           @default(now())
-  notificaciones    Notificacion[]     @relation("NotificacionDestinatario")
-  planes            PlanAlimenticio[]  @relation("PlanesNutricionista")
-  rutinas           Rutina[]           @relation("RutinasEntrenador")
+  id_usuario            Int                   @id @default(autoincrement())
+  nombre_usuario        String
+  email                 String                @unique
+  contrasena            String
+  rol                   Rol                   @default(cliente)
+  estado                Estado                @default(aprobado)
+  created_at            DateTime              @default(now())
+  notificaciones        Notificacion[]        @relation("NotificacionDestinatario")
+  planesCreados         PlanAlimenticio[]     @relation("PlanesNutricionista")
+  rutinasCreadas        Rutina[]              @relation("RutinasEntrenador")
+  rutinaAsignada        Rutina[]              @relation("RutinaCliente")
+  planAsignado          PlanAlimenticio[]     @relation("PlanCliente")
+  ejerciciosCompletados EjercicioCompletado[]
+  comidasCompletadas    ComidaCompletada[]
+  vinculosComoUsuario   Vinculo[]             @relation("VinculosComoUsuario")
+  vinculosComoProfesional Vinculo[]           @relation("VinculosComoProfesional")
+  mensajesEnviados        Mensaje[]           @relation("MensajesEnviados")
+  mensajesRecibidos       Mensaje[]           @relation("MensajesRecibidos")
 }
 
-model PlanAlimenticio {
-  id               Int      @id @default(autoincrement())
-  nombre           String
-  calorias         String
-  objetivo         String
-  comidas          String[]
-  nutricionista_id Int
-  nutricionista    Usuario  @relation("PlanesNutricionista", fields: [nutricionista_id], references: [id_usuario])
-  created_at       DateTime @default(now())
+// tipo: "entrenador" | "nutricionista"
+// estado: "pendiente" | "activo" | "rechazado"
+model Vinculo {
+  id             Int      @id @default(autoincrement())
+  usuario_id     Int
+  usuario        Usuario  @relation("VinculosComoUsuario", fields: [usuario_id], references: [id_usuario])
+  profesional_id Int
+  profesional    Usuario  @relation("VinculosComoProfesional", fields: [profesional_id], references: [id_usuario])
+  tipo           String
+  estado         String   @default("pendiente")
+  created_at     DateTime @default(now())
+
+  @@unique([usuario_id, profesional_id, tipo])
 }
 
+// dias_semana: número de días de entrenamiento
+// ejercicios: [{dia: 1, nombre: "Día 1 - Pecho", ejercicios: [{nombre, series, reps, notas}]}]
 model Rutina {
-  id            Int      @id @default(autoincrement())
-  nombre        String
-  objetivo      String
-  dias          Int
-  ejercicios    String[]
-  entrenador_id Int
-  entrenador    Usuario  @relation("RutinasEntrenador", fields: [entrenador_id], references: [id_usuario])
-  created_at    DateTime @default(now())
+  id              Int                   @id @default(autoincrement())
+  nombre          String
+  objetivo        String
+  dias_semana     Int
+  ejercicios      Json
+  entrenador_id   Int
+  entrenador      Usuario               @relation("RutinasEntrenador", fields: [entrenador_id], references: [id_usuario])
+  usuario_id      Int?
+  usuario         Usuario?              @relation("RutinaCliente", fields: [usuario_id], references: [id_usuario])
+  completados     EjercicioCompletado[]
+  created_at      DateTime              @default(now())
+}
+
+// dias: [{dia: 1, nombre: "Lunes", comidas: [{nombre, momento, descripcion}]}]
+model PlanAlimenticio {
+  id               Int                @id @default(autoincrement())
+  nombre           String
+  objetivo         String
+  dias             Json
+  nutricionista_id Int
+  nutricionista    Usuario            @relation("PlanesNutricionista", fields: [nutricionista_id], references: [id_usuario])
+  usuario_id       Int?
+  usuario          Usuario?           @relation("PlanCliente", fields: [usuario_id], references: [id_usuario])
+  completadas      ComidaCompletada[]
+  created_at       DateTime           @default(now())
+}
+
+model EjercicioCompletado {
+  id               Int      @id @default(autoincrement())
+  usuario_id       Int
+  usuario          Usuario  @relation(fields: [usuario_id], references: [id_usuario])
+  rutina_id        Int
+  rutina           Rutina   @relation(fields: [rutina_id], references: [id])
+  dia_numero       Int
+  ejercicio_nombre String
+  fecha            DateTime @default(now())
+}
+
+model ComidaCompletada {
+  id            Int             @id @default(autoincrement())
+  usuario_id    Int
+  usuario       Usuario         @relation(fields: [usuario_id], references: [id_usuario])
+  plan_id       Int
+  plan          PlanAlimenticio @relation(fields: [plan_id], references: [id])
+  dia_numero    Int
+  comida_nombre String
+  fecha         DateTime        @default(now())
+}
+
+model Mensaje {
+  id              Int      @id @default(autoincrement())
+  remitente_id    Int
+  remitente       Usuario  @relation("MensajesEnviados", fields: [remitente_id], references: [id_usuario])
+  destinatario_id Int
+  destinatario    Usuario  @relation("MensajesRecibidos", fields: [destinatario_id], references: [id_usuario])
+  contenido       String
+  leido           Boolean  @default(false)
+  created_at      DateTime @default(now())
 }
 
 model Notificacion {

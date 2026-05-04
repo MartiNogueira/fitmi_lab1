@@ -87,6 +87,9 @@ const login = async (req, res) => {
     if (err instanceof PendingActivationError) {
       return res.status(403).json({ error: err.message });
     }
+    if (err.message === 'Credenciales inválidas') {
+      return res.status(401).json({ error: err.message });
+    }
     console.error('Error en login:', err);
     res.status(500).json({ error: 'Error interno del servidor' });
   }

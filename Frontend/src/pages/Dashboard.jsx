@@ -1,211 +1,332 @@
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import AppLayout from '../components/AppLayout'
 import WelcomePopup from '../components/WelcomePopup'
 import DashboardEntrenador from './entrenador/DashboardEntrenador'
 import DashboardNutricionista from './nutricionista/DashboardNutricionista'
+import {
+  getMiRutina, getMiPlan, getMensajesNoLeidos, getMiVinculo,
+  getResumenProgreso, getCompletadosRutina, getCompletadasPlan, toggleEjercicio,
+} from '../api/auth'
 
-const today = new Date()
-const dateLabel = today.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
-const muscleGroup = 'Espalda y Bíceps'
+const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
-const weekDays = ['L', 'M', 'MI', 'J', 'V', 'S', 'D']
-const completedDays = [0, 1, 3]
-const todayIndex = 2
+function getWeekday() {
+  return (new Date().getDay() + 6) % 7
+}
 
-const exercises = [
-  { name: 'Dominadas', sets: '4 × 8 reps', badge: 'Espalda' },
-  { name: 'Remo con barra', sets: '3 × 10 reps', badge: 'Espalda' },
-  { name: 'Curl de bíceps', sets: '3 × 12 reps', badge: 'Bíceps' },
-]
-
-const feedItems = [
-  { initials: 'JR', name: 'Juan Rodriguez', action: 'Completó rutina de piernas', time: 'hace 20 min' },
-  { initials: 'LP', name: 'Laura Perez', action: 'Nueva racha de 7 días', time: 'hace 1 hora' },
-]
-
-const objectives = [
-  { name: 'Entrenamientos semanales', current: 3, goal: 5, unit: '', display: '3/5', pct: 60, color: '#22c55e', sub: 'Te faltan 2 para completar la semana' },
-  { name: 'Calorías quemadas', current: 1240, goal: 2000, unit: ' kcal', display: '1.240/2.000 kcal', pct: 62, color: '#22c55e', sub: '760 kcal restantes para hoy' },
-  { name: 'Peso objetivo', current: 78, goal: 75, unit: ' kg', display: '78/75 kg', pct: 80, color: '#f59e0b', sub: 'Te faltan 3 kg para tu meta' },
-  { name: 'Racha de días', current: 5, goal: 7, unit: ' días', display: '5/7 días', pct: 71, color: '#22c55e', sub: '2 días más para completar la semana' },
-]
-
-const cardStyle = {
-  border: '1px solid #111',
-  borderRadius: '8px',
-  backgroundColor: '#000',
-  padding: '16px',
+function initials(name) {
+  return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
 }
 
 export default function Dashboard() {
   const { user } = useAuth()
+  const navigate = useNavigate()
+
+  const [rutina, setRutina] = useState(null)
+  const [plan, setPlan] = useState(null)
+  const [mensajesCount, setMensajesCount] = useState(0)
+  const [entrenador, setEntrenador] = useState(null)
+  const [nutricionista, setNutricionista] = useState(null)
+  const [resumen, setResumen] = useState({ racha: 0, semana: Array(7).fill(false) })
+  const [completadosHoy, setCompletadosHoy] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  const weekday = getWeekday()
+
+  useEffect(() => {
+    if (user?.rol && user.rol !== 'cliente') return
+    Promise.all([
+      getMiRutina(),
+      getMiPlan(),
+      getMensajesNoLeidos(),
+      getMiVinculo('entrenador'),
+      getMiVinculo('nutricionista'),
+      getResumenProgreso(),
+    ]).then(async ([ru, pl, ms, en, nu, res]) => {
+      const ruData = ru.data
+      setRutina(ruData)
+      setPlan(pl.data)
+      setMensajesCount(ms.data.count)
+      setEntrenador(en.data?.profesional ?? null)
+      setNutricionista(nu.data?.profesional ?? null)
+      setResumen(res.data)
+
+      if (ruData) {
+        const comp = await getCompletadosRutina(ruData.id)
+        setCompletadosHoy(comp.data.map(c => c.ejercicio_nombre))
+      }
+    }).catch(() => {}).finally(() => setLoading(false))
+  }, [user])
+
+  const handleToggleEjercicio = async (nombre) => {
+    if (!rutina || !diaRutina) return
+    try {
+      const { data } = await toggleEjercicio({
+        rutina_id: rutina.id,
+        dia_numero: weekday + 1,
+        ejercicio_nombre: nombre,
+      })
+      setCompletadosHoy(prev =>
+        data.completado ? [...prev, nombre] : prev.filter(n => n !== nombre)
+      )
+      if (data.completado) {
+        setResumen(prev => {
+          const semana = [...prev.semana]
+          semana[weekday] = true
+          return { ...prev, semana }
+        })
+      }
+    } catch {}
+  }
 
   if (user?.rol === 'entrenador') return <DashboardEntrenador />
   if (user?.rol === 'nutricionista') return <DashboardNutricionista />
 
+  const diaRutina = rutina?.ejercicios?.[weekday] ?? null
+  const diaPlan = plan?.dias?.[weekday] ?? null
+  const esDescanso = !diaRutina || weekday >= (rutina?.dias_semana ?? 0)
+  const ejerciciosHoy = diaRutina?.ejercicios ?? []
+  const comidasHoy = diaPlan?.comidas ?? []
+  const completadosCount = ejerciciosHoy.filter(e => completadosHoy.includes(e.nombre)).length
+
   return (
     <AppLayout>
       <WelcomePopup userName={user?.name} userId={user?.id} />
-      <div className="min-h-screen px-6 pt-16 pb-8" style={{ backgroundColor: '#000' }}>
+      <div className="min-h-screen px-4 pt-16 pb-24" style={{ backgroundColor: '#000' }}>
 
-        {/* Saludo */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold" style={{ color: '#fff' }}>
-            Bienvenido, {user?.name}
+        {/* Header */}
+        <div className="mb-5 pt-2">
+          <h1 className="text-2xl font-bold" style={{ color: '#fff' }}>
+            Hola, {user?.name?.split(' ')[0]}
           </h1>
-          <p className="text-sm mt-1 capitalize" style={{ color: '#666' }}>
-            {dateLabel} · <span style={{ color: '#22c55e' }}>{muscleGroup}</span>
+          <p className="text-sm mt-1 capitalize" style={{ color: '#555' }}>
+            {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
           </p>
         </div>
 
-        {/* Stats grid */}
-        <div className="grid grid-cols-3 mb-6" style={{ border: '1px solid #111', borderRadius: '8px', overflow: 'hidden', maxWidth: '960px' }}>
-          {[
-            { value: '14', label: 'Entrenos', sub: 'este mes' },
-            { value: '5', label: 'Racha', sub: 'días' },
-            { value: '24', label: 'Seguidores', sub: 'siguiendo 18' },
-          ].map((stat, i) => (
-            <div
-              key={stat.label}
-              className="flex flex-col items-center py-4"
-              style={{
-                borderRight: i < 2 ? '1px solid #111' : 'none',
-                backgroundColor: '#000',
-              }}
-            >
-              <span className="text-2xl font-bold" style={{ color: '#fff' }}>{stat.value}</span>
-              <span className="text-xs mt-0.5" style={{ color: '#aaa' }}>{stat.label}</span>
-              <span className="text-xs" style={{ color: '#22c55e' }}>{stat.sub}</span>
+        {/* HOY TOCA */}
+        <div className="mb-4 rounded-2xl p-5"
+          style={{
+            backgroundColor: esDescanso ? '#0a0a0a' : '#0a1a0a',
+            border: `1px solid ${esDescanso ? '#1a1a1a' : '#22c55e44'}`,
+          }}>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: '#22c55e' }}>
+                Hoy toca
+              </p>
+              {loading ? (
+                <p className="text-lg font-bold" style={{ color: '#fff' }}>Cargando...</p>
+              ) : esDescanso ? (
+                <p className="text-lg font-bold" style={{ color: '#fff' }}>Día de descanso</p>
+              ) : (
+                <p className="text-lg font-bold" style={{ color: '#fff' }}>{diaRutina.nombre}</p>
+              )}
             </div>
-          ))}
-        </div>
-
-        {/* Two-column layout */}
-        <div className="flex flex-col lg:flex-row gap-4" style={{ maxWidth: '960px' }}>
-
-          {/* Left column */}
-          <div className="flex flex-col gap-4 flex-1" style={{ minWidth: 0 }}>
-
-            {/* Rutina de hoy */}
-            <div style={cardStyle}>
-              <h2 className="text-sm font-semibold mb-3" style={{ color: '#fff' }}>Rutina de hoy</h2>
-              <div className="flex flex-col gap-2 mb-4">
-                {exercises.map((ex) => (
-                  <div key={ex.name} className="flex items-center justify-between">
-                    <div>
-                      <span className="text-sm font-medium" style={{ color: '#fff' }}>{ex.name}</span>
-                      <span className="text-xs ml-2" style={{ color: '#666' }}>{ex.sets}</span>
-                    </div>
-                    <span
-                      className="text-xs px-2 py-0.5 rounded-full"
-                      style={{ backgroundColor: '#0a1a0a', color: '#22c55e', border: '1px solid #22c55e44' }}
-                    >
-                      {ex.badge}
-                    </span>
-                  </div>
-                ))}
+            {!esDescanso && !loading && ejerciciosHoy.length > 0 && (
+              <div className="text-center">
+                <p className="text-2xl font-bold" style={{ color: '#22c55e' }}>
+                  {completadosCount}/{ejerciciosHoy.length}
+                </p>
+                <p className="text-xs" style={{ color: '#555' }}>completados</p>
               </div>
-              <button
-                className="w-full py-2 text-sm font-semibold rounded-md transition-opacity hover:opacity-90"
-                style={{ backgroundColor: '#22c55e', color: '#000' }}
-              >
-                Iniciar entrenamiento
-              </button>
-            </div>
-
-            {/* Semana actual */}
-            <div style={cardStyle}>
-              <h2 className="text-sm font-semibold mb-3" style={{ color: '#fff' }}>Semana actual</h2>
-              <div className="flex gap-2 mb-3">
-                {weekDays.map((day, i) => {
-                  const isCompleted = completedDays.includes(i)
-                  const isToday = i === todayIndex
-                  return (
-                    <div
-                      key={day}
-                      className="flex-1 flex items-center justify-center py-2 rounded text-xs font-medium"
-                      style={{
-                        backgroundColor: isCompleted ? '#0a1a0a' : '#0d0d0d',
-                        color: isCompleted ? '#22c55e' : '#444',
-                        border: isToday ? '1px solid #fff' : isCompleted ? '1px solid #22c55e44' : '1px solid #111',
-                      }}
-                    >
-                      {day}
-                    </div>
-                  )
-                })}
-              </div>
-              <p className="text-xs mb-2" style={{ color: '#666' }}>3 de 5 entrenamientos</p>
-              <div className="w-full rounded-full" style={{ height: '4px', backgroundColor: '#111' }}>
-                <div className="rounded-full" style={{ width: '60%', height: '4px', backgroundColor: '#22c55e' }} />
-              </div>
-            </div>
-
-            {/* Feed */}
-            <div style={cardStyle}>
-              <h2 className="text-sm font-semibold mb-3" style={{ color: '#fff' }}>Feed</h2>
-              <div className="flex flex-col gap-3">
-                {feedItems.map((item) => (
-                  <div key={item.initials} className="flex items-center gap-3">
-                    <div
-                      className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                      style={{ backgroundColor: '#0a1a0a', color: '#22c55e', border: '1px solid #22c55e44' }}
-                    >
-                      {item.initials}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium" style={{ color: '#22c55e' }}>{item.name}</p>
-                      <p className="text-xs truncate" style={{ color: '#666' }}>{item.action}</p>
-                    </div>
-                    <span className="text-xs shrink-0" style={{ color: '#444' }}>{item.time}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
+            )}
           </div>
 
-          {/* Right column — Objetivos */}
-          <div
-            className="flex flex-col gap-4 lg:w-72 shrink-0"
-            style={{ border: '1px solid #111', borderRadius: '8px', padding: '20px', backgroundColor: '#000', alignSelf: 'flex-start' }}
-          >
-            <p
-              className="text-xs font-semibold tracking-widest uppercase"
-              style={{ color: '#333' }}
-            >
-              Objetivos de la semana
-            </p>
+          {!esDescanso && !loading && ejerciciosHoy.length > 0 && (
+            <div className="flex flex-col gap-2 mb-4">
+              {ejerciciosHoy.map((ej) => {
+                const done = completadosHoy.includes(ej.nombre)
+                return (
+                  <button
+                    key={ej.nombre}
+                    onClick={() => handleToggleEjercicio(ej.nombre)}
+                    className="flex items-center gap-3 py-2.5 px-3 rounded-xl w-full text-left"
+                    style={{
+                      backgroundColor: done ? '#0f2a0f' : '#0d0d0d',
+                      border: `1px solid ${done ? '#22c55e44' : '#1a1a1a'}`,
+                    }}
+                  >
+                    <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+                      style={{
+                        backgroundColor: done ? '#22c55e' : 'transparent',
+                        border: `2px solid ${done ? '#22c55e' : '#333'}`,
+                      }}>
+                      {done && (
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      )}
+                    </div>
+                    <span className="text-sm flex-1"
+                      style={{ color: done ? '#22c55e' : '#ccc', textDecoration: done ? 'line-through' : 'none' }}>
+                      {ej.nombre}
+                    </span>
+                    <span className="text-xs" style={{ color: '#444' }}>{ej.series}×{ej.reps}</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
 
-            <div className="flex flex-col gap-5">
-              {objectives.map((obj) => (
-                <div key={obj.name}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm" style={{ color: '#ccc' }}>{obj.name}</span>
-                    <span className="text-sm font-medium" style={{ color: '#22c55e' }}>{obj.display}</span>
+          {!loading && (
+            <button
+              onClick={() => navigate('/ejercicios')}
+              className="w-full py-2.5 text-sm font-semibold rounded-xl"
+              style={{
+                backgroundColor: esDescanso ? '#0d0d0d' : '#22c55e',
+                color: esDescanso ? '#555' : '#000',
+                border: esDescanso ? '1px solid #1a1a1a' : 'none',
+              }}>
+              {esDescanso ? 'Ver rutina' : 'Ver rutina completa'}
+            </button>
+          )}
+        </div>
+
+        {/* Racha + Semana */}
+        <div className="flex gap-3 mb-4">
+          <div className="rounded-2xl p-4 flex flex-col items-center justify-center shrink-0"
+            style={{ backgroundColor: '#0a0a0a', border: '1px solid #1a1a1a', minWidth: '84px' }}>
+            <p className="text-2xl">🔥</p>
+            <p className="text-xl font-bold mt-1" style={{ color: '#fff' }}>{resumen.racha}</p>
+            <p className="text-xs text-center mt-0.5" style={{ color: '#555', lineHeight: '1.2' }}>días{'\n'}seguidos</p>
+          </div>
+
+          <div className="flex-1 rounded-2xl p-4" style={{ backgroundColor: '#0a0a0a', border: '1px solid #1a1a1a' }}>
+            <p className="text-xs font-medium mb-3" style={{ color: '#555' }}>Esta semana</p>
+            <div className="flex justify-between">
+              {DIAS.map((dia, i) => (
+                <div key={dia} className="flex flex-col items-center gap-1.5">
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center"
+                    style={{
+                      backgroundColor: resumen.semana[i] ? '#22c55e' : (i === weekday ? '#0a1a0a' : 'transparent'),
+                      border: `2px solid ${resumen.semana[i] ? '#22c55e' : (i === weekday ? '#22c55e55' : '#1a1a1a')}`,
+                    }}>
+                    {resumen.semana[i] && (
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
                   </div>
-                  <div className="w-full rounded-full mb-1" style={{ height: '4px', backgroundColor: '#111' }}>
-                    <div
-                      className="rounded-full"
-                      style={{ width: `${obj.pct}%`, height: '4px', backgroundColor: obj.color }}
-                    />
+                  <span style={{ fontSize: '10px', color: i === weekday ? '#22c55e' : '#333' }}>{dia}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Comidas del día */}
+        {!loading && plan && comidasHoy.length > 0 && (
+          <div className="mb-4 rounded-2xl p-5" style={{ backgroundColor: '#0a0a0a', border: '1px solid #1a1a1a' }}>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: '#22c55e' }}>
+                  Alimentación
+                </p>
+                <p className="text-sm font-semibold" style={{ color: '#fff' }}>
+                  {diaPlan?.nombre || 'Comidas de hoy'}
+                </p>
+              </div>
+              <p className="text-sm font-bold" style={{ color: '#22c55e' }}>
+                {plan.objetivo}
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-1.5 mb-4">
+              {comidasHoy.map((c) => (
+                <div key={c.nombre} className="flex items-center justify-between py-1">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: '#22c55e44' }} />
+                    <span className="text-sm" style={{ color: '#ccc' }}>{c.nombre}</span>
                   </div>
-                  <p className="text-xs" style={{ color: '#333' }}>{obj.sub}</p>
+                  <span className="text-xs capitalize" style={{ color: '#444' }}>{c.momento}</span>
                 </div>
               ))}
             </div>
 
-            {/* Resumen general */}
-            <div
-              className="rounded-lg p-4 mt-2"
-              style={{ backgroundColor: '#0a0a0a', border: '1px solid #111' }}
-            >
-              <p className="text-xs uppercase tracking-widest mb-2" style={{ color: '#444' }}>Progreso general</p>
-              <p className="text-3xl font-bold" style={{ color: '#22c55e' }}>68%</p>
+            <button onClick={() => navigate('/alimentacion')}
+              className="w-full py-2 text-sm rounded-xl"
+              style={{ backgroundColor: '#111', color: '#666', border: '1px solid #1a1a1a' }}>
+              Ver plan completo
+            </button>
+          </div>
+        )}
+
+        {/* Quick actions */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          {[
+            { label: 'Progreso', sub: 'Ver historial', path: '/progreso' },
+            { label: 'Ejercicios', sub: rutina?.nombre ?? 'Sin rutina', path: '/ejercicios' },
+            { label: 'Alimentación', sub: plan?.nombre ?? 'Sin plan', path: '/alimentacion' },
+            {
+              label: 'Mensajes',
+              sub: mensajesCount > 0 ? `${mensajesCount} sin leer` : 'Sin mensajes nuevos',
+              badge: mensajesCount > 0,
+              path: entrenador
+                ? `/chat/${entrenador.id_usuario}`
+                : nutricionista
+                  ? `/chat/${nutricionista.id_usuario}`
+                  : null,
+              state: entrenador
+                ? { nombre: entrenador.nombre_usuario }
+                : nutricionista
+                  ? { nombre: nutricionista.nombre_usuario }
+                  : undefined,
+            },
+          ].map(({ label, sub, path, state, badge }) => (
+            <button
+              key={label}
+              onClick={() => path && navigate(path, state ? { state } : undefined)}
+              className="rounded-2xl p-4 text-left"
+              style={{
+                backgroundColor: '#0a0a0a',
+                border: `1px solid ${badge ? '#ef444433' : '#1a1a1a'}`,
+                opacity: path ? 1 : 0.4,
+              }}>
+              <p className="text-sm font-semibold mb-0.5" style={{ color: badge ? '#ef4444' : '#fff' }}>
+                {label}{badge ? ` · ${mensajesCount}` : ''}
+              </p>
+              <p className="text-xs" style={{ color: '#444' }}>{sub}</p>
+            </button>
+          ))}
+        </div>
+
+        {/* Mi equipo */}
+        {(entrenador || nutricionista) && (
+          <div className="rounded-2xl p-4" style={{ backgroundColor: '#0a0a0a', border: '1px solid #1a1a1a' }}>
+            <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: '#555' }}>
+              Mi equipo
+            </p>
+            <div className="flex flex-col gap-2">
+              {[
+                entrenador && { prof: entrenador, label: 'Entrenador' },
+                nutricionista && { prof: nutricionista, label: 'Nutricionista' },
+              ].filter(Boolean).map(({ prof, label }) => (
+                <button
+                  key={prof.id_usuario}
+                  onClick={() => navigate(`/chat/${prof.id_usuario}`, { state: { nombre: prof.nombre_usuario } })}
+                  className="flex items-center gap-3 py-2.5 px-3 rounded-xl"
+                  style={{ backgroundColor: '#0d0d0d', border: '1px solid #1a1a1a' }}>
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                    style={{ backgroundColor: '#0a1a0a', color: '#22c55e', border: '1px solid #22c55e44' }}>
+                    {initials(prof.nombre_usuario)}
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="text-sm font-medium" style={{ color: '#fff' }}>{prof.nombre_usuario}</p>
+                    <p className="text-xs" style={{ color: '#555' }}>{label}</p>
+                  </div>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2"
+                    strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                </button>
+              ))}
             </div>
           </div>
+        )}
 
-        </div>
       </div>
     </AppLayout>
   )

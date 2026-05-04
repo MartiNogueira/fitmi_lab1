@@ -66,3 +66,57 @@ export const updateRutina = (id, data) =>
 
 export const deleteRutina = (id) =>
   api.delete(`/rutinas/${id}`)
+
+// Vínculos usuario ↔ profesional
+export const getProfesionales = (tipo) =>
+  api.get('/vinculos/profesionales', { params: { tipo } })
+
+export const solicitarVinculo = (profesional_id, tipo) =>
+  api.post('/vinculos/solicitar', { profesional_id, tipo })
+
+export const getMiVinculo = (tipo) =>
+  api.get('/vinculos/mi-vinculo', { params: { tipo } })
+
+export const getSolicitudesVinculo = () =>
+  api.get('/vinculos/solicitudes')
+
+export const responderSolicitud = (id, accion) =>
+  api.put(`/vinculos/${id}/responder`, { accion })
+
+export const getMisClientes = () =>
+  api.get('/vinculos/mis-clientes')
+
+// Progreso del usuario (rutina + plan asignados)
+export const getMiRutina = () =>
+  api.get('/progreso/rutina')
+
+export const getResumenProgreso = () =>
+  api.get('/progreso/resumen')
+
+export const getCompletadosRutina = (rutina_id) =>
+  api.get(`/progreso/rutina/${rutina_id}/completados`)
+
+export const toggleEjercicio = (data) =>
+  api.post('/progreso/ejercicio/toggle', data)
+
+export const getMiPlan = () =>
+  api.get('/progreso/plan')
+
+export const getCompletadasPlan = (plan_id) =>
+  api.get(`/progreso/plan/${plan_id}/completadas`)
+
+export const toggleComida = (data) =>
+  api.post('/progreso/comida/toggle', data)
+
+// Mensajes
+export const getMensajesNoLeidos = () =>
+  api.get('/mensajes/no-leidos')
+
+export const getInterlocutores = () =>
+  api.get('/mensajes')
+
+export const getConversacion = (userId) =>
+  api.get(`/mensajes/${userId}`)
+
+export const enviarMensaje = (userId, contenido) =>
+  api.post(`/mensajes/${userId}`, { contenido })
