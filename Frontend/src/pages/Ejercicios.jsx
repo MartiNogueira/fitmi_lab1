@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import AppLayout from '../components/AppLayout'
 import { getExercises } from '../api/exercisedb'
 import { getMiRutina, getCompletadosRutina, toggleEjercicio } from '../api/auth'
@@ -30,18 +30,8 @@ const LEVEL_COLOR = {
 const FORCE_LABEL = { push: 'Empuje', pull: 'Jalón', static: 'Estático' }
 const MECHANIC_LABEL = { compound: 'Compuesto', isolation: 'Aislamiento' }
 
-// Animated image that alternates between frame 0 and frame 1 to simulate movement
-function ExerciseAnimation({ images, name }) {
-  const [frame, setFrame] = useState(0)
-  const intervalRef = useRef(null)
-
-  useEffect(() => {
-    if (images.length < 2) return
-    intervalRef.current = setInterval(() => setFrame(f => (f === 0 ? 1 : 0)), 800)
-    return () => clearInterval(intervalRef.current)
-  }, [images])
-
-  if (!images.length) {
+function ExerciseGif({ gifUrl, name }) {
+  if (!gifUrl) {
     return (
       <div className="w-full flex items-center justify-center"
         style={{ aspectRatio: '4/3', backgroundColor: '#0d0d0d', borderRadius: '12px' }}>
@@ -49,23 +39,14 @@ function ExerciseAnimation({ images, name }) {
       </div>
     )
   }
-
   return (
-    <div className="w-full relative overflow-hidden"
+    <div className="w-full overflow-hidden"
       style={{ aspectRatio: '4/3', backgroundColor: '#0d0d0d', borderRadius: '12px' }}>
-      {images.slice(0, 2).map((src, i) => (
-        <img
-          key={i}
-          src={src}
-          alt={name}
-          style={{
-            position: 'absolute', inset: 0,
-            width: '100%', height: '100%', objectFit: 'contain',
-            opacity: frame === i ? 1 : 0,
-            transition: 'opacity 0.3s ease',
-          }}
-        />
-      ))}
+      <img
+        src={gifUrl}
+        alt={name}
+        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+      />
     </div>
   )
 }
@@ -160,9 +141,9 @@ function ExerciseDrawer({ exercise, onClose }) {
             </button>
           </div>
 
-          {/* Animation */}
+          {/* GIF */}
           <div className="mb-5">
-            <ExerciseAnimation images={exercise.images} name={exercise.name} />
+            <ExerciseGif gifUrl={exercise.gifUrl} name={exercise.name} />
           </div>
 
           {/* Tags */}
@@ -365,25 +346,16 @@ function TabExplorar() {
               className="w-full flex items-center justify-center"
               style={{ aspectRatio: '1 / 1', backgroundColor: '#0d0d0d', overflow: 'hidden' }}
             >
-              {ex.images[0] ? (
+              {ex.gifUrl ? (
                 <img
-                  src={ex.images[0]}
+                  src={ex.gifUrl}
                   alt={ex.name}
                   loading="lazy"
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none'
-                    e.currentTarget.nextSibling.style.display = 'flex'
-                  }}
                 />
-              ) : null}
-              <div style={{
-                display: ex.images[0] ? 'none' : 'flex',
-                width: '100%', height: '100%',
-                alignItems: 'center', justifyContent: 'center',
-              }}>
+              ) : (
                 <span className="text-xs capitalize" style={{ color: '#333' }}>{ex.bodyPart}</span>
-              </div>
+              )}
             </div>
             <div className="p-3">
               <p className="text-sm font-medium mb-2 capitalize" style={{ color: '#fff' }}>{ex.name}</p>
