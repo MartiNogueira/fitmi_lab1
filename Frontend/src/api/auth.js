@@ -108,6 +108,31 @@ export const getCompletadasPlan = (plan_id) =>
 export const toggleComida = (data) =>
   api.post('/progreso/comida/toggle', data)
 
+// Comunidades
+export const getComunidades = (search) =>
+  api.get('/comunidades', { params: search ? { search } : {} })
+
+export const createComunidad = (data) =>
+  api.post('/comunidades', data)
+
+export const updateComunidad = (id, data) =>
+  api.put(`/comunidades/${id}`, data)
+
+export const deleteComunidad = (id) =>
+  api.delete(`/comunidades/${id}`)
+
+export const solicitarUnirseAComunidad = (comunidadId) =>
+  api.post(`/comunidades/${comunidadId}/solicitar`)
+
+export const getSolicitudesRecibidasComunidad = () =>
+  api.get('/comunidades/solicitudes-recibidas')
+
+export const responderSolicitudComunidad = (solicitudId, accion) =>
+  api.put(`/comunidades/solicitudes/${solicitudId}/responder`, { accion })
+
+export const getMiembrosComunidad = (comunidadId) =>
+  api.get(`/comunidades/${comunidadId}/miembros`)
+
 // Mensajes
 export const getMensajesNoLeidos = () =>
   api.get('/mensajes/no-leidos')

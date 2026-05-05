@@ -38,6 +38,8 @@ model Usuario {
   vinculosComoProfesional Vinculo[]           @relation("VinculosComoProfesional")
   mensajesEnviados        Mensaje[]           @relation("MensajesEnviados")
   mensajesRecibidos       Mensaje[]           @relation("MensajesRecibidos")
+  comunidadesCreadas      Comunidad[]         @relation("ComunidadesCreadas")
+  solicitudesComunidad    SolicitudComunidad[] @relation("SolicitudesComunidad")
 }
 
 // tipo: "entrenador" | "nutricionista"
@@ -105,6 +107,29 @@ model ComidaCompletada {
   dia_numero    Int
   comida_nombre String
   fecha         DateTime        @default(now())
+}
+
+model Comunidad {
+  id          Int                  @id @default(autoincrement())
+  nombre      String               @unique
+  descripcion String
+  creador_id  Int
+  creador     Usuario              @relation("ComunidadesCreadas", fields: [creador_id], references: [id_usuario])
+  privada     Boolean              @default(false)
+  miembros    SolicitudComunidad[]
+  created_at  DateTime             @default(now())
+}
+
+model SolicitudComunidad {
+  id           Int       @id @default(autoincrement())
+  comunidad_id Int
+  comunidad    Comunidad @relation(fields: [comunidad_id], references: [id])
+  usuario_id   Int
+  usuario      Usuario   @relation("SolicitudesComunidad", fields: [usuario_id], references: [id_usuario])
+  estado       String    @default("pendiente")
+  created_at   DateTime  @default(now())
+
+  @@unique([comunidad_id, usuario_id])
 }
 
 model Mensaje {

@@ -16,7 +16,7 @@ const navUsuario = [
   {
     section: 'SOCIAL',
     items: [
-      { label: 'Comunidad', path: '/comunidad', icon: Users },
+      { label: 'Comunidades', path: '/comunidades', icon: Users },
       { label: 'Mensajes', path: '/mensajes', icon: Monitor },
     ],
   },

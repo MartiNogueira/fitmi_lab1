@@ -13,6 +13,7 @@ import rutinasRoutes from './routes/rutinas.routes.js'
 import progresoRoutes from './routes/progreso.routes.js'
 import vinculoRoutes from './routes/vinculo.routes.js'
 import mensajesRoutes from './routes/mensajes.routes.js'
+import comunidadesRoutes from './routes/comunidades.routes.js'
 
 const app = express()
 
@@ -27,6 +28,7 @@ app.use('/api/rutinas', rutinasRoutes)
 app.use('/api/progreso', progresoRoutes)
 app.use('/api/vinculos', vinculoRoutes)
 app.use('/api/mensajes', mensajesRoutes)
+app.use('/api/comunidades', comunidadesRoutes)
 
 const PORT = process.env.PORT || 3000
 app.listen(PORT, () => console.log(`Fitmi server corriendo en puerto ${PORT}`))
