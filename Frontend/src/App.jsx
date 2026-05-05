@@ -12,16 +12,13 @@ import Rutinas from './pages/Rutinas'
 import Progreso from './pages/Progreso'
 import MisAlumnos from './pages/entrenador/MisAlumnos'
 import RutinasEntrenador from './pages/entrenador/RutinasEntrenador'
-import SolicitudesEntrenador from './pages/entrenador/SolicitudesEntrenador'
+import Solicitudes from './pages/entrenador/Solicitudes'
+import MensajesEntrenador from './pages/entrenador/MensajesEntrenador'
 import MisPacientes from './pages/nutricionista/MisPacientes'
 import PlanesAlimenticios from './pages/nutricionista/PlanesAlimenticios'
 import SolicitudesNutricionista from './pages/nutricionista/SolicitudesNutricionista'
-import Alimentacion from './pages/Alimentacion'
-import MiEntrenador from './pages/MiEntrenador'
-import MiNutricionista from './pages/MiNutricionista'
-import Chat from './pages/Chat'
-import InboxChat from './components/InboxChat'
-import Comunidades from './pages/Comunidades'
+import MensajesNutricionista from './pages/nutricionista/MensajesNutricionista'
+import ComunidadDetalle from './pages/ComunidadDetalle'
 
 function PrivateRoute({ children }) {
   const { user } = useAuth()
@@ -51,22 +48,22 @@ export default function App() {
           <Route path="/rutinas" element={<PrivateRoute><Rutinas /></PrivateRoute>} />
           <Route path="/ejercicios" element={<PrivateRoute><Ejercicios /></PrivateRoute>} />
           <Route path="/progreso" element={<PrivateRoute><Progreso /></PrivateRoute>} />
-          <Route path="/comunidades" element={<PrivateRoute><Comunidades /></PrivateRoute>} />
-          <Route path="/mensajes" element={<PrivateRoute><InboxChat /></PrivateRoute>} />
-          <Route path="/mi-entrenador" element={<PrivateRoute><MiEntrenador /></PrivateRoute>} />
-          <Route path="/mi-nutricionista" element={<PrivateRoute><MiNutricionista /></PrivateRoute>} />
-          <Route path="/alimentacion" element={<PrivateRoute><Alimentacion /></PrivateRoute>} />
-          <Route path="/chat/:userId" element={<PrivateRoute><Chat /></PrivateRoute>} />
+          <Route path="/comunidad" element={<PrivateRoute><ComingSoon title="Comunidad" /></PrivateRoute>} />
+          <Route path="/mensajes" element={<PrivateRoute><ComingSoon title="Mensajes" /></PrivateRoute>} />
+          <Route path="/mi-entrenador" element={<PrivateRoute><ComingSoon title="Mi entrenador" /></PrivateRoute>} />
+          <Route path="/mi-nutricionista" element={<PrivateRoute><ComingSoon title="Mi nutricionista" /></PrivateRoute>} />
+          <Route path="/alimentacion" element={<PrivateRoute><ComingSoon title="Alimentación" /></PrivateRoute>} />
           <Route path="/entrenador/alumnos" element={<PrivateRoute><MisAlumnos /></PrivateRoute>} />
           <Route path="/entrenador/rutinas" element={<PrivateRoute><RutinasEntrenador /></PrivateRoute>} />
-          <Route path="/entrenador/solicitudes" element={<PrivateRoute><SolicitudesEntrenador /></PrivateRoute>} />
-          <Route path="/entrenador/mensajes" element={<PrivateRoute><InboxChat /></PrivateRoute>} />
+          <Route path="/entrenador/solicitudes" element={<PrivateRoute><Solicitudes /></PrivateRoute>} />
+          <Route path="/entrenador/mensajes" element={<PrivateRoute><MensajesEntrenador /></PrivateRoute>} />
           <Route path="/nutricionista/pacientes" element={<PrivateRoute><MisPacientes /></PrivateRoute>} />
           <Route path="/nutricionista/planes" element={<PrivateRoute><PlanesAlimenticios /></PrivateRoute>} />
           <Route path="/nutricionista/solicitudes" element={<PrivateRoute><SolicitudesNutricionista /></PrivateRoute>} />
-          <Route path="/nutricionista/mensajes" element={<PrivateRoute><InboxChat /></PrivateRoute>} />
+          <Route path="/nutricionista/mensajes" element={<PrivateRoute><MensajesNutricionista /></PrivateRoute>} />
           <Route path="/register-profesional" element={<RegisterProfesional />} />
           <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="/comunidades/:id" element={<ComunidadDetalle />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
