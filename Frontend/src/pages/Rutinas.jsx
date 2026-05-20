@@ -1,3 +1,6 @@
+
+//todo hardcodeado
+
 import AppLayout from '../components/AppLayout'
 import { List, Sparkles, User } from 'lucide-react'
 

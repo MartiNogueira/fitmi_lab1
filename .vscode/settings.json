@@ -1,0 +1,5 @@
+{
+  "files.exclude": {
+    "CLAUDE.md": true
+  }
+}

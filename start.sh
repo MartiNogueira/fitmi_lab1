@@ -10,7 +10,7 @@ echo " Levantando Backend..."
 cd Backend && npm run dev &
 
 echo " Levantando Frontend..."
-cd ../Frontend && npm run dev &
+cd Frontend && npm run dev &
 
 echo ""
 echo " Fitmi corriendo!"
