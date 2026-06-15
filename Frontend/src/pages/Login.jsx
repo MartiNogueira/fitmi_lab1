@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { login } from '../api/auth'
 import { useAuth } from '../context/AuthContext'
+import GoogleLoginButton from '../components/GoogleLoginButton'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -75,6 +76,12 @@ export default function Login() {
           >
             {loading ? 'Entrando...' : 'Entrar'}
           </Button>
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-xs text-muted-foreground">o</span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+          <GoogleLoginButton onError={setError} />
           <p className="text-center text-sm text-muted-foreground">
             ¿No tenés cuenta?{' '}
             <Link to="/register" className="text-primary hover:underline">

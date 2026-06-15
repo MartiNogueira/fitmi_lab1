@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import AppLayout from '../../components/AppLayout'
 import WelcomePopup from '../../components/WelcomePopup'
-import { getMisClientes, getRutinas, getSolicitudesVinculo, getMensajesNoLeidos } from '../../api/auth'
+import { getMisClientes, getNotificaciones, getRutinas, getSolicitudesVinculo } from '../../api/auth'
 
 const dateLabel = new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
 
@@ -16,7 +16,7 @@ const cardStyle = { border: '1px solid #111', borderRadius: '8px', backgroundCol
 export default function DashboardEntrenador() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [stats, setStats] = useState({ alumnos: '-', rutinas: '-', solicitudes: '-', mensajes: '-' })
+  const [stats, setStats] = useState({ alumnos: '-', rutinas: '-', solicitudes: '-', avances: '-' })
   const [alumnos, setAlumnos] = useState([])
   const [rutinas, setRutinas] = useState([])
   const [loading, setLoading] = useState(true)
@@ -26,15 +26,16 @@ export default function DashboardEntrenador() {
       getMisClientes(),
       getRutinas(),
       getSolicitudesVinculo(),
-      getMensajesNoLeidos(),
-    ]).then(([cl, ru, so, ms]) => {
+      getNotificaciones(),
+    ]).then(([cl, ru, so, no]) => {
+      const avancesNuevos = no.data.filter((item) => item.tipo === 'reporte_avance' && !item.leida).length
       setAlumnos(cl.data)
       setRutinas(ru.data)
       setStats({
         alumnos: cl.data.length,
         rutinas: ru.data.length,
         solicitudes: so.data.length,
-        mensajes: ms.data.count,
+        avances: avancesNuevos,
       })
     }).catch(() => {}).finally(() => setLoading(false))
   }, [])
@@ -60,7 +61,7 @@ export default function DashboardEntrenador() {
             { value: stats.alumnos, label: 'Alumnos', sub: 'activos' },
             { value: stats.rutinas, label: 'Rutinas', sub: 'creadas' },
             { value: stats.solicitudes, label: 'Solicitudes', sub: 'pendientes' },
-            { value: stats.mensajes, label: 'Mensajes', sub: 'sin leer' },
+            { value: stats.avances, label: 'Avances', sub: 'nuevos' },
           ].map((stat, i) => (
             <div key={stat.label} className="flex flex-col items-center py-4"
               style={{ borderRight: i < 3 ? '1px solid #111' : 'none', backgroundColor: '#000' }}>

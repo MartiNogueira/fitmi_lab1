@@ -95,6 +95,34 @@ const login = async (req, res) => {
   }
 }
 
+const googleLogin = async (req, res) => {
+  const { credential } = req.body
+
+  if (!credential) {
+    return res.status(400).json({ error: 'Token de Google requerido' })
+  }
+
+  try {
+    const { token, user } = await AuthService.loginWithGoogle(credential)
+    res.json({ token, user })
+  } catch (err) {
+    if (err instanceof PendingActivationError) {
+      return res.status(403).json({ error: err.message })
+    }
+    if (
+      err.message === 'Token de Google inválido' ||
+      err.message === 'Tu solicitud fue rechazada. Contactá al administrador.'
+    ) {
+      return res.status(401).json({ error: err.message })
+    }
+    if (err.message === 'Google login no está configurado') {
+      return res.status(500).json({ error: err.message })
+    }
+    console.error('Error en googleLogin:', err)
+    res.status(500).json({ error: 'Error interno del servidor' })
+  }
+}
+
 const updateMe = async (req, res) => {
   const { name, email, password } = req.body
   const id = req.user.id
@@ -141,4 +169,4 @@ const deleteMe = async (req, res) => {
   }
 }
 
-export { register, registerProfesional, login, updateMe, deleteMe };
+export { register, registerProfesional, login, googleLogin, updateMe, deleteMe };

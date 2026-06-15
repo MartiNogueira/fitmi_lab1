@@ -40,6 +40,9 @@ model Usuario {
   mensajesRecibidos       Mensaje[]           @relation("MensajesRecibidos")
   comunidadesCreadas      Comunidad[]         @relation("ComunidadesCreadas")
   solicitudesComunidad    SolicitudComunidad[] @relation("SolicitudesComunidad")
+  postsComunidad          PostComunidad[]     @relation("PostsComunidadAutor")
+  likesComunidad          LikePostComunidad[]
+  comentariosComunidad    ComentarioPostComunidad[] @relation("ComentariosComunidadAutor")
 }
 
 // tipo: "entrenador" | "nutricionista"
@@ -117,6 +120,7 @@ model Comunidad {
   creador     Usuario              @relation("ComunidadesCreadas", fields: [creador_id], references: [id_usuario])
   privada     Boolean              @default(false)
   miembros    SolicitudComunidad[]
+  posts       PostComunidad[]
   created_at  DateTime             @default(now())
 }
 
@@ -130,6 +134,46 @@ model SolicitudComunidad {
   created_at   DateTime  @default(now())
 
   @@unique([comunidad_id, usuario_id])
+}
+
+model PostComunidad {
+  id           Int       @id @default(autoincrement())
+  comunidad_id Int
+  comunidad    Comunidad @relation(fields: [comunidad_id], references: [id], onDelete: Cascade)
+  autor_id     Int
+  autor        Usuario   @relation("PostsComunidadAutor", fields: [autor_id], references: [id_usuario], onDelete: Cascade)
+  contenido    String
+  likes        LikePostComunidad[]
+  comentarios  ComentarioPostComunidad[]
+  created_at   DateTime  @default(now())
+
+  @@index([comunidad_id, created_at])
+  @@index([autor_id])
+}
+
+model LikePostComunidad {
+  id         Int           @id @default(autoincrement())
+  post_id    Int
+  post       PostComunidad @relation(fields: [post_id], references: [id], onDelete: Cascade)
+  usuario_id Int
+  usuario    Usuario       @relation(fields: [usuario_id], references: [id_usuario], onDelete: Cascade)
+  created_at DateTime      @default(now())
+
+  @@unique([post_id, usuario_id])
+  @@index([usuario_id])
+}
+
+model ComentarioPostComunidad {
+  id         Int           @id @default(autoincrement())
+  post_id    Int
+  post       PostComunidad @relation(fields: [post_id], references: [id], onDelete: Cascade)
+  autor_id   Int
+  autor      Usuario       @relation("ComentariosComunidadAutor", fields: [autor_id], references: [id_usuario], onDelete: Cascade)
+  contenido  String
+  created_at DateTime      @default(now())
+
+  @@index([post_id, created_at])
+  @@index([autor_id])
 }
 
 model Mensaje {
@@ -152,4 +196,15 @@ model Notificacion {
   leida           Boolean  @default(false)
   data            Json?
   created_at      DateTime @default(now())
+}
+
+model EmailLog {
+  id           Int      @id @default(autoincrement())
+  tipo         String
+  usuario_id   Int?
+  destinatario String
+  asunto       String
+  created_at   DateTime @default(now())
+
+  @@index([tipo, usuario_id, created_at])
 }

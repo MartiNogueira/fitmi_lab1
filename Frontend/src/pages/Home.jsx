@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import GoogleLoginButton from '../components/GoogleLoginButton'
 import { Button } from '@/components/ui/button'
 
 export default function Home() {
@@ -34,6 +35,12 @@ export default function Home() {
         >
           Registrarse
         </Button>
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-xs text-muted-foreground">o</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+        <GoogleLoginButton />
         <div className="pt-1 border-t border-border text-center">
           <p className="text-xs text-muted-foreground mb-1">¿Sos profesional?</p>
           <button

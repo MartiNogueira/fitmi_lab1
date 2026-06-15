@@ -1,6 +1,14 @@
 import { useState, useEffect } from 'react'
 import AppLayout from '../components/AppLayout'
-import { getMiRutina, getMiPlan, getCompletadosRutina, getCompletadasPlan } from '../api/auth'
+import {
+  enviarAvanceProgresoPorEmail,
+  getRutinas,
+  getMiPlan,
+  getCompletadosRutina,
+  getCompletadasPlan,
+} from '../api/auth'
+import { getSelectedRutinaId, setSelectedRutinaId } from '../utils/rutinaSelection'
+import { Button } from '@/components/ui/button'
 
 const cardStyle = { border: '1px solid #111', borderRadius: '8px', backgroundColor: '#000' }
 
@@ -18,12 +26,18 @@ export default function Progreso() {
   const [completadosHoy, setCompletadosHoy] = useState([])
   const [completadasHoy, setCompletadasHoy] = useState([])
   const [loading, setLoading] = useState(true)
+  const [mailLoading, setMailLoading] = useState(false)
+  const [mailMessage, setMailMessage] = useState('')
+  const [mailError, setMailError] = useState('')
 
   useEffect(() => {
-    Promise.all([getMiRutina(), getMiPlan()])
+    Promise.all([getRutinas(), getMiPlan()])
       .then(async ([ru, pl]) => {
-        const rutinaData = ru.data
+        const rutinas = ru.data
+        const selectedId = getSelectedRutinaId()
+        const rutinaData = rutinas.find((item) => item.id === selectedId) ?? rutinas[0] ?? null
         const planData = pl.data
+        if (rutinaData) setSelectedRutinaId(rutinaData.id)
         setRutina(rutinaData)
         setPlan(planData)
 
@@ -40,6 +54,20 @@ export default function Progreso() {
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
+
+  const handleEnviarAvance = async () => {
+    setMailLoading(true)
+    setMailMessage('')
+    setMailError('')
+    try {
+      const { data } = await enviarAvanceProgresoPorEmail(7)
+      setMailMessage(data.message || 'Avance enviado')
+    } catch (err) {
+      setMailError(err.response?.data?.error || 'No se pudo enviar el avance')
+    } finally {
+      setMailLoading(false)
+    }
+  }
 
   const totalEjercicios = (rutina?.ejercicios || []).reduce(
     (sum, d) => sum + (d.ejercicios?.length ?? 0), 0
@@ -58,6 +86,18 @@ export default function Progreso() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold" style={{ color: '#fff' }}>Progreso</h1>
           <p className="text-sm mt-1" style={{ color: '#333' }}>Tu avance de hoy</p>
+          <div className="mt-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center">
+            <Button
+              type="button"
+              onClick={handleEnviarAvance}
+              disabled={mailLoading}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {mailLoading ? 'Enviando...' : 'Enviar avance por email'}
+            </Button>
+            {mailMessage && <p className="text-xs" style={{ color: '#22c55e' }}>{mailMessage}</p>}
+            {mailError && <p className="text-xs text-destructive">{mailError}</p>}
+          </div>
         </div>
 
         {loading ? (

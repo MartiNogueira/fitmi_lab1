@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import AppLayout from '../../components/AppLayout'
 import WelcomePopup from '../../components/WelcomePopup'
-import { getMisClientes, getPlanes, getSolicitudesVinculo, getMensajesNoLeidos } from '../../api/auth'
+import { getMisClientes, getNotificaciones, getPlanes, getSolicitudesVinculo } from '../../api/auth'
 
 const dateLabel = new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
 
@@ -16,7 +16,7 @@ const cardStyle = { border: '1px solid #111', borderRadius: '8px', backgroundCol
 export default function DashboardNutricionista() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [stats, setStats] = useState({ pacientes: '-', planes: '-', solicitudes: '-', mensajes: '-' })
+  const [stats, setStats] = useState({ pacientes: '-', planes: '-', solicitudes: '-', avances: '-' })
   const [pacientes, setPacientes] = useState([])
   const [planes, setPlanes] = useState([])
   const [loading, setLoading] = useState(true)
@@ -26,15 +26,16 @@ export default function DashboardNutricionista() {
       getMisClientes(),
       getPlanes(),
       getSolicitudesVinculo(),
-      getMensajesNoLeidos(),
-    ]).then(([pa, pl, so, ms]) => {
+      getNotificaciones(),
+    ]).then(([pa, pl, so, no]) => {
+      const avancesNuevos = no.data.filter((item) => item.tipo === 'reporte_avance' && !item.leida).length
       setPacientes(pa.data)
       setPlanes(pl.data)
       setStats({
         pacientes: pa.data.length,
         planes: pl.data.length,
         solicitudes: so.data.length,
-        mensajes: ms.data.count,
+        avances: avancesNuevos,
       })
     }).catch(() => {}).finally(() => setLoading(false))
   }, [])
@@ -60,7 +61,7 @@ export default function DashboardNutricionista() {
             { value: stats.pacientes, label: 'Pacientes', sub: 'activos' },
             { value: stats.planes, label: 'Planes', sub: 'creados' },
             { value: stats.solicitudes, label: 'Solicitudes', sub: 'pendientes' },
-            { value: stats.mensajes, label: 'Mensajes', sub: 'sin leer' },
+            { value: stats.avances, label: 'Avances', sub: 'nuevos' },
           ].map((stat, i) => (
             <div key={stat.label} className="flex flex-col items-center py-4"
               style={{ borderRight: i < 3 ? '1px solid #111' : 'none', backgroundColor: '#000' }}>

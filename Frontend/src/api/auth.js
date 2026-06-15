@@ -19,6 +19,9 @@ export const registerProfesional = (name, email, password, especialidad) =>
 export const login = (email, password) =>
   api.post('/auth/login', { email, password })
 
+export const loginWithGoogle = (credential) =>
+  api.post('/auth/google', { credential })
+
 export const updateMe = (data) =>
   api.put('/auth/me', data)
 
@@ -93,6 +96,12 @@ export const getMiRutina = () =>
 export const getResumenProgreso = () =>
   api.get('/progreso/resumen')
 
+export const enviarAvanceProgresoPorEmail = (dias = 7) =>
+  api.post('/progreso/enviar-avance-email', { dias })
+
+export const enviarRecordatorioProgreso = (usuario_id) =>
+  api.post('/progreso/recordatorio-progreso', { usuario_id })
+
 export const getCompletadosRutina = (rutina_id) =>
   api.get(`/progreso/rutina/${rutina_id}/completados`)
 
@@ -132,6 +141,24 @@ export const responderSolicitudComunidad = (solicitudId, accion) =>
 
 export const getMiembrosComunidad = (comunidadId) =>
   api.get(`/comunidades/${comunidadId}/miembros`)
+
+export const getPostsComunidad = (comunidadId) =>
+  api.get(`/comunidades/${comunidadId}/posts`)
+
+export const createPostComunidad = (comunidadId, contenido) =>
+  api.post(`/comunidades/${comunidadId}/posts`, { contenido })
+
+export const deletePostComunidad = (postId) =>
+  api.delete(`/comunidades/posts/${postId}`)
+
+export const toggleLikePostComunidad = (postId) =>
+  api.post(`/comunidades/posts/${postId}/like`)
+
+export const createComentarioPostComunidad = (postId, contenido) =>
+  api.post(`/comunidades/posts/${postId}/comentarios`, { contenido })
+
+export const deleteComentarioPostComunidad = (comentarioId) =>
+  api.delete(`/comunidades/comentarios/${comentarioId}`)
 
 // Mensajes
 export const getMensajesNoLeidos = () =>

@@ -1,18 +1,11 @@
 
-//todo hardcodeado
-
+import { useEffect, useState } from 'react'
 import AppLayout from '../components/AppLayout'
-import { List, Sparkles, User } from 'lucide-react'
-
-const weekSchedule = [
-  { day: 'Lun', muscles: ['Pecho', 'Tríceps'] },
-  { day: 'Mar', muscles: ['Espalda', 'Bíceps'] },
-  { day: 'Mié', muscles: [] },
-  { day: 'Jue', muscles: ['Hombros', 'Tríceps'] },
-  { day: 'Vie', muscles: ['Piernas', 'Glúteos'] },
-  { day: 'Sáb', muscles: [] },
-  { day: 'Dom', muscles: [] },
-]
+import { List, Pencil, Sparkles, Trash2, User } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { deleteRutina, getRutinas } from '../api/auth'
+import { useAuth } from '../context/AuthContext'
+import { clearSelectedRutinaId, getSelectedRutinaId } from '../utils/rutinaSelection'
 
 const cardBase = {
   border: '1px solid #111',
@@ -25,6 +18,42 @@ const cardBase = {
 }
 
 export default function Rutinas() {
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  const [rutinas, setRutinas] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [deletingId, setDeletingId] = useState(null)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+
+  useEffect(() => {
+    getRutinas()
+      .then(({ data }) => setRutinas(data))
+      .catch(() => setError('No se pudieron cargar tus rutinas'))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const countEjercicios = (rutina) =>
+    (rutina.ejercicios || []).reduce((total, dia) => total + (dia.ejercicios?.length || 0), 0)
+
+  const canManage = (rutina) => rutina.entrenador_id === user?.id
+
+  const handleDelete = async (rutina) => {
+    setDeletingId(rutina.id)
+    setError('')
+
+    try {
+      await deleteRutina(rutina.id)
+      setRutinas((prev) => prev.filter((item) => item.id !== rutina.id))
+      if (getSelectedRutinaId() === rutina.id) clearSelectedRutinaId()
+      setDeleteTarget(null)
+    } catch (err) {
+      setError(err?.response?.data?.error ?? 'No se pudo eliminar la rutina')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   return (
     <AppLayout>
       <div className="min-h-screen px-6 pt-16 pb-8" style={{ backgroundColor: '#000', maxWidth: '960px' }}>
@@ -55,6 +84,7 @@ export default function Rutinas() {
               </p>
             </div>
             <button
+              onClick={() => navigate('/crear-rutina')}
               className="mt-auto w-full py-2 text-sm font-semibold rounded-md transition-opacity hover:opacity-80"
               style={{ backgroundColor: 'transparent', border: '1px solid #22c55e', color: '#22c55e' }}
             >
@@ -99,6 +129,7 @@ export default function Rutinas() {
               </p>
             </div>
             <button
+              onClick={() => navigate('/mi-entrenador')}
               className="mt-auto w-full py-2 text-sm font-semibold rounded-md transition-opacity hover:opacity-70"
               style={{ backgroundColor: 'transparent', border: '1px solid #22c55e', color: '#22c55e' }}
             >
@@ -108,66 +139,145 @@ export default function Rutinas() {
 
         </div>
 
-        {/* Mi rutina actual */}
+        {/* Mis rutinas */}
         <div>
           <p
             className="text-xs font-semibold uppercase tracking-widest mb-3"
             style={{ color: '#333' }}
           >
-            Mi rutina actual
+            Mis rutinas
           </p>
 
-          <div style={{ border: '1px solid #111', borderRadius: '8px', backgroundColor: '#000' }}>
-            {/* Card header */}
-            <div
-              className="flex items-start justify-between px-5 py-4"
-              style={{ borderBottom: '1px solid #111' }}
-            >
-              <div>
-                <p className="text-sm font-semibold" style={{ color: '#fff' }}>Rutina Fuerza — Semana 1</p>
-                <p className="text-xs mt-0.5" style={{ color: '#555' }}>5 días · 4 ejercicios por día</p>
-              </div>
+          {loading ? (
+            <p className="text-sm py-8" style={{ color: '#444' }}>Cargando rutinas...</p>
+          ) : error ? (
+            <p className="text-sm py-8" style={{ color: '#ef4444' }}>{error}</p>
+          ) : rutinas.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12" style={{ border: '1px solid #111', borderRadius: '8px' }}>
+              <p className="text-sm" style={{ color: '#444' }}>Todavía no creaste rutinas.</p>
               <button
-                className="text-xs font-medium transition-opacity hover:opacity-70"
+                onClick={() => navigate('/crear-rutina')}
+                className="mt-3 text-sm font-medium transition-opacity hover:opacity-80"
                 style={{ color: '#22c55e' }}
               >
-                Editar
+                Crear la primera
               </button>
             </div>
-
-            {/* Vista semanal */}
-            <div className="grid grid-cols-7 gap-px p-4" style={{ gap: '8px' }}>
-              {weekSchedule.map(({ day, muscles }) => (
-                <div key={day} className="flex flex-col items-center gap-1.5">
-                  <span className="text-xs font-medium" style={{ color: '#444' }}>{day}</span>
-                  {muscles.length > 0 ? (
-                    <div className="flex flex-col gap-1 w-full">
-                      {muscles.map((m) => (
-                        <span
-                          key={m}
-                          className="text-center text-xs rounded px-1 py-0.5"
-                          style={{
-                            backgroundColor: '#0a1a0a',
-                            color: '#22c55e',
-                            border: '1px solid #1a3a1a',
-                            fontSize: '10px',
-                            lineHeight: '1.4',
-                          }}
-                        >
-                          {m}
-                        </span>
-                      ))}
+          ) : (
+            <div className="flex flex-col gap-3">
+              {rutinas.map((rutina) => (
+                <div key={rutina.id} style={{ border: '1px solid #111', borderRadius: '8px', backgroundColor: '#000', overflow: 'hidden' }}>
+                  <div className="flex items-start justify-between gap-4 px-5 py-4" style={{ borderBottom: '1px solid #111' }}>
+                    <div>
+                      <p className="text-sm font-semibold" style={{ color: '#fff' }}>{rutina.nombre}</p>
+                      <p className="text-xs mt-0.5" style={{ color: '#555' }}>
+                        {rutina.objetivo} · {rutina.dias_semana} días · {countEjercicios(rutina)} ejercicios
+                      </p>
                     </div>
-                  ) : (
-                    <span className="text-center" style={{ color: '#333', fontSize: '10px' }}>Descanso</span>
-                  )}
+                    <div className="flex shrink-0 items-center gap-2">
+                      {canManage(rutina) ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/editar-rutina/${rutina.id}`)}
+                            className="flex h-8 w-8 items-center justify-center rounded-md transition-opacity hover:opacity-75"
+                            style={{ border: '1px solid #222', color: '#22c55e', backgroundColor: '#0d0d0d' }}
+                            aria-label="Editar rutina"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeleteTarget(rutina)}
+                            disabled={deletingId === rutina.id}
+                            className="flex h-8 w-8 items-center justify-center rounded-md transition-opacity hover:opacity-75 disabled:opacity-50"
+                            style={{ border: '1px solid #3a1010', color: '#ef4444', backgroundColor: '#120707' }}
+                            aria-label="Eliminar rutina"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </>
+                      ) : (
+                        <span
+                          className="rounded-full px-2 py-1 text-xs font-medium"
+                          style={{ backgroundColor: '#111', color: '#666', border: '1px solid #222' }}
+                        >
+                          Asignada
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 p-4 md:grid-cols-2">
+                    {(rutina.ejercicios || []).map((dia) => (
+                      <div key={dia.dia} className="rounded-md p-3" style={{ border: '1px solid #111', backgroundColor: '#050505' }}>
+                        <p className="text-xs font-semibold mb-2" style={{ color: '#22c55e' }}>{dia.nombre}</p>
+                        {dia.ejercicios?.length ? (
+                          <div className="flex flex-col gap-1.5">
+                            {dia.ejercicios.map((ejercicio, index) => (
+                              <div key={`${ejercicio.nombre}-${index}`} className="flex items-start justify-between gap-3">
+                                <span className="text-sm" style={{ color: '#ddd' }}>{ejercicio.nombre}</span>
+                                {(ejercicio.series || ejercicio.reps) && (
+                                  <span className="shrink-0 text-xs" style={{ color: '#555' }}>
+                                    {[ejercicio.series && `${ejercicio.series}s`, ejercicio.reps && `${ejercicio.reps}r`].filter(Boolean).join(' · ')}
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs" style={{ color: '#444' }}>Sin ejercicios</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
-          </div>
+          )}
         </div>
 
       </div>
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: 'rgba(0,0,0,0.78)' }}>
+          <div className="w-full max-w-sm rounded-lg p-6" style={{ backgroundColor: '#0a0a0a', border: '1px solid #222' }}>
+            <div className="mb-5">
+              <div
+                className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg"
+                style={{ backgroundColor: '#1a0a0a', border: '1px solid #3a1010', color: '#ef4444' }}
+              >
+                <Trash2 size={18} />
+              </div>
+              <p className="text-base font-semibold" style={{ color: '#fff' }}>Eliminar rutina</p>
+              <p className="mt-2 text-sm" style={{ color: '#666', lineHeight: '1.5' }}>
+                Vas a borrar "{deleteTarget.nombre}". Esta acción no se puede deshacer.
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                disabled={deletingId === deleteTarget.id}
+                className="flex-1 rounded-md py-2 text-sm font-medium transition-opacity hover:opacity-75 disabled:opacity-50"
+                style={{ border: '1px solid #222', color: '#777', backgroundColor: 'transparent' }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDelete(deleteTarget)}
+                disabled={deletingId === deleteTarget.id}
+                className="flex-1 rounded-md py-2 text-sm font-semibold transition-opacity hover:opacity-85 disabled:opacity-60"
+                style={{ backgroundColor: '#ef4444', color: '#fff' }}
+              >
+                {deletingId === deleteTarget.id ? 'Eliminando...' : 'Eliminar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   )
 }

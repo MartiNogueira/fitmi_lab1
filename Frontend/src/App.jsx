@@ -9,6 +9,7 @@ import RegisterProfesional from './pages/RegisterProfesional'
 import AppLayout from './components/AppLayout'
 import Ejercicios from './pages/Ejercicios'
 import Rutinas from './pages/Rutinas'
+import CrearRutina from './pages/CrearRutina'
 import Progreso from './pages/Progreso'
 import MisAlumnos from './pages/entrenador/MisAlumnos'
 import RutinasEntrenador from './pages/entrenador/RutinasEntrenador'
@@ -49,6 +50,8 @@ export default function App() {
           <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
           <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
           <Route path="/rutinas" element={<PrivateRoute><Rutinas /></PrivateRoute>} />
+          <Route path="/crear-rutina" element={<PrivateRoute><CrearRutina /></PrivateRoute>} />
+          <Route path="/editar-rutina/:id" element={<PrivateRoute><CrearRutina /></PrivateRoute>} />
           <Route path="/ejercicios" element={<PrivateRoute><Ejercicios /></PrivateRoute>} />
           <Route path="/progreso" element={<PrivateRoute><Progreso /></PrivateRoute>} />
           <Route path="/comunidades" element={<PrivateRoute><Comunidades /></PrivateRoute>} />

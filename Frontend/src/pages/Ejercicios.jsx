@@ -1,7 +1,9 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import AppLayout from '../components/AppLayout'
 import { getExercises } from '../api/exercisedb'
-import { getMiRutina, getCompletadosRutina, toggleEjercicio } from '../api/auth'
+import { getRutinas, getCompletadosRutina, toggleEjercicio } from '../api/auth'
+import { Check, ChevronDown } from 'lucide-react'
+import { getSelectedRutinaId, setSelectedRutinaId as setStoredSelectedRutinaId } from '../utils/rutinaSelection'
 
 const inputStyle = {
   backgroundColor: '#0a0a0a',
@@ -397,11 +399,15 @@ function TabExplorar() {
 }
 
 function TabMiRutina() {
-  const [rutina, setRutina] = useState(null)
+  const [rutinas, setRutinas] = useState([])
+  const [selectedRutinaId, setSelectedRutinaId] = useState(null)
+  const [selectorOpen, setSelectorOpen] = useState(false)
   const [completados, setCompletados] = useState([])
   const [diaActivo, setDiaActivo] = useState(0)
   const [loading, setLoading] = useState(true)
   const [toggling, setToggling] = useState(null)
+
+  const rutina = rutinas.find((item) => item.id === selectedRutinaId) ?? null
 
   const cargarCompletados = useCallback(async (rutina_id) => {
     const { data } = await getCompletadosRutina(rutina_id)
@@ -409,19 +415,32 @@ function TabMiRutina() {
   }, [])
 
   useEffect(() => {
-    getMiRutina()
+    getRutinas()
       .then(({ data }) => {
-        setRutina(data)
-        if (data) cargarCompletados(data.id)
+        setRutinas(data)
+        const storedId = getSelectedRutinaId()
+        const initial = data.find((item) => item.id === storedId) ?? data[0]
+        if (initial) {
+          setSelectedRutinaId(initial.id)
+          setStoredSelectedRutinaId(initial.id)
+        }
       })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [cargarCompletados])
+  }, [])
+
+  useEffect(() => {
+    if (!selectedRutinaId) return
+    setDiaActivo(0)
+    setCompletados([])
+    cargarCompletados(selectedRutinaId).catch(() => {})
+  }, [selectedRutinaId, cargarCompletados])
 
   const isCompletado = (dia_numero, ejercicio_nombre) =>
     completados.some(c => c.dia_numero === dia_numero && c.ejercicio_nombre === ejercicio_nombre)
 
   const handleToggle = async (dia_numero, ejercicio_nombre) => {
+    if (!rutina) return
     const key = `${dia_numero}-${ejercicio_nombre}`
     setToggling(key)
     try {
@@ -441,21 +460,73 @@ function TabMiRutina() {
     return (
       <div style={cardStyle}>
         <p className="text-sm text-center py-6" style={{ color: '#444' }}>
-          No tenés una rutina asignada todavía.
+          No tenés rutinas creadas todavía.
         </p>
-        <p className="text-xs text-center" style={{ color: '#333' }}>Tu entrenador te asignará una cuando esté lista.</p>
+        <p className="text-xs text-center" style={{ color: '#333' }}>Creá una rutina para empezar a registrar tu entrenamiento.</p>
       </div>
     )
   }
 
-  const dia = rutina.ejercicios[diaActivo]
+  const dia = rutina.ejercicios?.[diaActivo] ?? { dia: 1, nombre: 'Día 1', ejercicios: [] }
   const completadosHoy = dia.ejercicios.filter(e => isCompletado(dia.dia, e.nombre)).length
 
   return (
     <div>
       <div className="mb-4">
-        <p className="text-sm font-medium" style={{ color: '#fff' }}>{rutina.nombre}</p>
-        <p className="text-xs mt-0.5" style={{ color: '#555' }}>{rutina.objetivo} · {rutina.dias_semana} días/semana</p>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setSelectorOpen((open) => !open)}
+            className="flex w-full items-center justify-between gap-3 rounded-lg px-4 py-3 text-left transition-colors"
+            style={{ border: '1px solid #111', backgroundColor: '#050505' }}
+          >
+            <span className="min-w-0">
+              <span className="block text-sm font-medium truncate" style={{ color: '#fff' }}>{rutina.nombre}</span>
+              <span className="block text-xs mt-0.5 truncate" style={{ color: '#555' }}>
+                {rutina.objetivo} · {rutina.dias_semana} días/semana
+              </span>
+            </span>
+            <ChevronDown
+              size={18}
+              className="shrink-0 transition-transform"
+              style={{ color: '#22c55e', transform: selectorOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
+            />
+          </button>
+
+          {selectorOpen && (
+            <div
+              className="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-lg"
+              style={{ border: '1px solid #1a1a1a', backgroundColor: '#050505', boxShadow: '0 16px 40px rgba(0,0,0,0.45)' }}
+            >
+              {rutinas.map((item) => {
+                const selected = item.id === selectedRutinaId
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedRutinaId(item.id)
+                      setStoredSelectedRutinaId(item.id)
+                      setSelectorOpen(false)
+                    }}
+                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-[#0a0a0a]"
+                    style={{ borderBottom: '1px solid #111' }}
+                  >
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium truncate" style={{ color: selected ? '#22c55e' : '#fff' }}>
+                        {item.nombre}
+                      </span>
+                      <span className="block text-xs mt-0.5 truncate" style={{ color: '#555' }}>
+                        {item.objetivo} · {item.dias_semana} días/semana
+                      </span>
+                    </span>
+                    {selected && <Check size={16} style={{ color: '#22c55e' }} />}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Selector de días */}

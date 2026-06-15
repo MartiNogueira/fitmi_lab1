@@ -3,7 +3,9 @@ import prisma from '../db/prisma.js'
 export const getRutinas = async (req, res) => {
   try {
     const rutinas = await prisma.rutina.findMany({
-      where: { entrenador_id: req.user.id },
+      where: req.user.rol === 'cliente'
+        ? { usuario_id: req.user.id }
+        : { entrenador_id: req.user.id },
       include: { usuario: { select: { id_usuario: true, nombre_usuario: true, email: true } } },
       orderBy: { created_at: 'desc' },
     })
@@ -20,8 +22,8 @@ export const createRutina = async (req, res) => {
     return res.status(400).json({ error: 'Nombre, objetivo, días y ejercicios son requeridos' })
   }
   try {
-    let usuario_id = null
-    if (usuario_email) {
+    let usuario_id = req.user.rol === 'cliente' ? req.user.id : null
+    if (req.user.rol !== 'cliente' && usuario_email) {
       const usuario = await prisma.usuario.findUnique({ where: { email: usuario_email } })
       if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' })
       if (usuario.rol !== 'cliente') return res.status(400).json({ error: 'Solo se puede asignar a clientes' })

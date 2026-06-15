@@ -1,4 +1,8 @@
 import prisma from '../db/prisma.js'
+import {
+  sendInactivityReminders,
+  sendProgressReportToProfessionals,
+} from '../services/progress-mail.service.js'
 
 function hoyRango() {
   const hoy = new Date()
@@ -205,5 +209,97 @@ export const toggleComida = async (req, res) => {
   } catch (err) {
     console.error('toggleComida:', err)
     res.status(500).json({ error: 'Error al actualizar progreso' })
+  }
+}
+
+export const enviarAvancePorEmail = async (req, res) => {
+  const dias = Number(req.body?.dias || 7)
+  if (!Number.isInteger(dias) || dias < 1 || dias > 60) {
+    return res.status(400).json({ error: 'La cantidad de días debe estar entre 1 y 60' })
+  }
+
+  try {
+    const result = await sendProgressReportToProfessionals(req.user.id, dias)
+    if (result.sent === 0) {
+      return res.status(400).json({ error: 'No tenés profesionales asignados para enviar el avance' })
+    }
+    res.json({
+      message: `Avance enviado a la casilla de ${result.sent} profesional${result.sent === 1 ? '' : 'es'}`,
+      ...result,
+    })
+  } catch (err) {
+    console.error('enviarAvancePorEmail:', err)
+    res.status(500).json({ error: 'Error al enviar avance por email' })
+  }
+}
+
+export const enviarRecordatoriosInactividad = async (req, res) => {
+  const dias = Number(req.body?.dias || process.env.ACTIVITY_REMINDER_DAYS || 4)
+  if (!Number.isInteger(dias) || dias < 1 || dias > 30) {
+    return res.status(400).json({ error: 'La cantidad de días debe estar entre 1 y 30' })
+  }
+
+  try {
+    const result = await sendInactivityReminders(dias)
+    res.json({
+      message: result.devMode
+        ? `Recordatorios generados en modo desarrollo: ${result.sent}. Configurá SMTP para enviarlos por mail.`
+        : `Recordatorios enviados: ${result.sent}`,
+      ...result,
+    })
+  } catch (err) {
+    console.error('enviarRecordatoriosInactividad:', err)
+    res.status(500).json({ error: 'Error al enviar recordatorios' })
+  }
+}
+
+export const enviarRecordatorioProgreso = async (req, res) => {
+  const usuarioId = Number(req.body?.usuario_id)
+  if (!usuarioId) {
+    return res.status(400).json({ error: 'Usuario requerido' })
+  }
+  if (!['entrenador', 'nutricionista'].includes(req.user.rol)) {
+    return res.status(403).json({ error: 'Solo profesionales pueden enviar recordatorios' })
+  }
+
+  try {
+    const vinculo = await prisma.vinculo.findFirst({
+      where: {
+        usuario_id: usuarioId,
+        profesional_id: req.user.id,
+        estado: 'activo',
+      },
+      include: {
+        usuario: { select: { id_usuario: true, nombre_usuario: true, email: true } },
+        profesional: { select: { id_usuario: true, nombre_usuario: true, rol: true } },
+      },
+    })
+
+    if (!vinculo) {
+      return res.status(404).json({ error: 'Alumno no encontrado o no vinculado' })
+    }
+
+    const notificacion = await prisma.notificacion.create({
+      data: {
+        destinatario_id: usuarioId,
+        tipo: 'recordatorio_progreso',
+        mensaje: `${vinculo.profesional.nombre_usuario} te recuerda que envíes tu progreso.`,
+        data: {
+          profesional_id: vinculo.profesional.id_usuario,
+          profesional_nombre: vinculo.profesional.nombre_usuario,
+          profesional_rol: vinculo.profesional.rol,
+          usuario_id: vinculo.usuario.id_usuario,
+          usuario_nombre: vinculo.usuario.nombre_usuario,
+        },
+      },
+    })
+
+    res.status(201).json({
+      message: `Recordatorio enviado a ${vinculo.usuario.nombre_usuario}`,
+      notificacion,
+    })
+  } catch (err) {
+    console.error('enviarRecordatorioProgreso:', err)
+    res.status(500).json({ error: 'Error al enviar recordatorio' })
   }
 }
