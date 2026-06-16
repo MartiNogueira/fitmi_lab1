@@ -85,7 +85,7 @@ export default function Progreso() {
 
         <div className="mb-6">
           <h1 className="text-2xl font-bold" style={{ color: '#fff' }}>Progreso</h1>
-          <p className="text-sm mt-1" style={{ color: '#333' }}>Tu avance de hoy</p>
+          <p className="text-sm mt-1" style={{ color: '#333' }}>Tu avance de esta semana</p>
           <div className="mt-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center">
             <Button
               type="button"
@@ -108,7 +108,7 @@ export default function Progreso() {
             {/* Entrenamiento hoy */}
             <div style={{ ...cardStyle, flex: 1, minWidth: 0 }}>
               <div className="px-5 py-4" style={{ borderBottom: '1px solid #111' }}>
-                <p className="text-sm font-semibold" style={{ color: '#fff' }}>Entrenamiento de hoy</p>
+                <p className="text-sm font-semibold" style={{ color: '#fff' }}>Entrenamiento de esta semana</p>
                 {rutina && <p className="text-xs mt-0.5" style={{ color: '#555' }}>{rutina.nombre}</p>}
               </div>
               <div className="px-5 py-4">
@@ -161,7 +161,7 @@ export default function Progreso() {
             {/* Alimentación hoy */}
             <div style={{ ...cardStyle, flex: 1, minWidth: 0 }}>
               <div className="px-5 py-4" style={{ borderBottom: '1px solid #111' }}>
-                <p className="text-sm font-semibold" style={{ color: '#fff' }}>Alimentación de hoy</p>
+                <p className="text-sm font-semibold" style={{ color: '#fff' }}>Alimentación de esta semana</p>
                 {plan && <p className="text-xs mt-0.5" style={{ color: '#555' }}>{plan.nombre}</p>}
               </div>
               <div className="px-5 py-4">

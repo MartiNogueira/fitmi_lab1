@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import Sidebar from './Sidebar'
 import NotificationBell from './NotificationBell'
 import ProgressMailboxBell from './ProgressMailboxBell'
+import ScheduleCalendarButton from './ScheduleCalendarButton'
 
 function getInitials(name) {
   if (!name) return '?'
@@ -65,6 +66,7 @@ export default function AppLayout({ children }) {
       <div className="flex-1 ml-64 relative">
         <div className="absolute top-5 right-6 flex items-center gap-2 z-10">
           {user?.rol === 'admin' && <NotificationBell />}
+          {user?.rol === 'cliente' && <ScheduleCalendarButton />}
           {['cliente', 'entrenador', 'nutricionista'].includes(user?.rol) && <ProgressMailboxBell />}
           <UserMenu />
         </div>

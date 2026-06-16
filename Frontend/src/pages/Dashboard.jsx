@@ -31,6 +31,7 @@ export default function Dashboard() {
   const [nutricionista, setNutricionista] = useState(null)
   const [resumen, setResumen] = useState({ racha: 0, semana: Array(7).fill(false) })
   const [completadosHoy, setCompletadosHoy] = useState([])
+  const [completadasHoy, setCompletadasHoy] = useState([])
   const [loading, setLoading] = useState(true)
 
   const weekday = getWeekday()
@@ -57,6 +58,10 @@ export default function Dashboard() {
         const comp = await getCompletadosRutina(ruData.id)
         setCompletadosHoy(comp.data.map(c => c.ejercicio_nombre))
       }
+      if (pl.data?.id) {
+        const compl = await getCompletadasPlan(pl.data.id)
+        setCompletadasHoy(compl.data.map(c => c.comida_nombre))
+      }
     }).catch(() => {}).finally(() => setLoading(false))
   }, [user])
 
@@ -78,7 +83,9 @@ export default function Dashboard() {
           return { ...prev, semana }
         })
       }
-    } catch {}
+    } catch (err) {
+      console.error('Error al actualizar ejercicio:', err)
+    }
   }
 
   if (user?.rol === 'entrenador') return <DashboardEntrenador />
@@ -90,6 +97,15 @@ export default function Dashboard() {
   const ejerciciosHoy = diaRutina?.ejercicios ?? []
   const comidasHoy = diaPlan?.comidas ?? []
   const completadosCount = ejerciciosHoy.filter(e => completadosHoy.includes(e.nombre)).length
+  const comidasCompletadasCount = comidasHoy.filter(c => completadasHoy.includes(c.nombre)).length
+  const pctEjerciciosHoy = ejerciciosHoy.length > 0 ? Math.round((completadosCount / ejerciciosHoy.length) * 100) : 0
+  const pctComidasHoy = comidasHoy.length > 0 ? Math.round((comidasCompletadasCount / comidasHoy.length) * 100) : 0
+  const pctGeneral = Math.round(
+    [pctEjerciciosHoy, pctComidasHoy].filter((pct, index) =>
+      index === 0 ? ejerciciosHoy.length > 0 : comidasHoy.length > 0
+    ).reduce((sum, pct) => sum + pct, 0) /
+    Math.max(1, [ejerciciosHoy.length > 0, comidasHoy.length > 0].filter(Boolean).length)
+  )
 
   return (
     <AppLayout>
@@ -183,6 +199,65 @@ export default function Dashboard() {
               {esDescanso ? 'Ver rutina' : 'Ver rutina completa'}
             </button>
           )}
+        </div>
+
+        {/* Gráfico de progreso */}
+        <div className="mb-4 rounded-2xl p-5" style={{ backgroundColor: '#0a0a0a', border: '1px solid #1a1a1a' }}>
+          <div className="flex items-start justify-between gap-4 mb-5">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: '#22c55e' }}>
+                Progreso
+              </p>
+              <p className="text-sm font-semibold" style={{ color: '#fff' }}>Avance de hoy</p>
+            </div>
+            <div className="text-right">
+              <p className="text-3xl font-bold" style={{ color: '#22c55e' }}>{pctGeneral}%</p>
+              <p className="text-xs" style={{ color: '#555' }}>general</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 mb-5">
+            {[
+              { label: 'Entrenamiento', pct: pctEjerciciosHoy, value: `${completadosCount}/${ejerciciosHoy.length}` },
+              { label: 'Alimentación', pct: pctComidasHoy, value: `${comidasCompletadasCount}/${comidasHoy.length}` },
+            ].map((item) => (
+              <div key={item.label} className="rounded-xl p-3" style={{ backgroundColor: '#050505', border: '1px solid #111' }}>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-medium" style={{ color: '#aaa' }}>{item.label}</p>
+                  <p className="text-xs font-bold" style={{ color: '#22c55e' }}>{item.value}</p>
+                </div>
+                <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#141414' }}>
+                  <div
+                    className="h-full rounded-full"
+                    style={{ width: `${item.pct}%`, backgroundColor: '#22c55e', transition: 'width 0.3s' }}
+                  />
+                </div>
+                <p className="text-lg font-bold mt-2" style={{ color: '#fff' }}>{item.pct}%</p>
+              </div>
+            ))}
+          </div>
+
+          <div>
+            <div className="flex items-end justify-between gap-2" style={{ height: '88px' }}>
+              {DIAS.map((dia, i) => {
+                const value = resumen.semana[i] ? 100 : 12
+                return (
+                  <div key={dia} className="flex flex-1 flex-col items-center justify-end gap-2">
+                    <div className="w-full rounded-t-md"
+                      style={{
+                        height: `${value}%`,
+                        minHeight: '10px',
+                        maxWidth: '28px',
+                        backgroundColor: resumen.semana[i] ? '#22c55e' : (i === weekday ? '#163016' : '#111'),
+                        border: `1px solid ${resumen.semana[i] ? '#22c55e' : '#1a1a1a'}`,
+                      }}
+                    />
+                    <span className="text-[10px]" style={{ color: i === weekday ? '#22c55e' : '#444' }}>{dia}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
         </div>
 
         {/* Racha + Semana */}
