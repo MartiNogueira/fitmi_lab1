@@ -20,6 +20,25 @@ function initials(name) {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
 }
 
+function PieProgress({ label, pct, value, color }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div
+        className="h-14 w-14 rounded-full flex items-center justify-center shrink-0"
+        style={{ background: `conic-gradient(${color} ${pct}%, #181818 0)` }}
+      >
+        <div className="h-9 w-9 rounded-full flex items-center justify-center" style={{ backgroundColor: '#0a0a0a' }}>
+          <span className="text-[10px] font-bold" style={{ color }}>{pct}%</span>
+        </div>
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs font-medium truncate" style={{ color: '#fff' }}>{label}</p>
+        <p className="text-[10px]" style={{ color: '#555' }}>{value}</p>
+      </div>
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -29,7 +48,14 @@ export default function Dashboard() {
   const [mensajesCount, setMensajesCount] = useState(0)
   const [entrenador, setEntrenador] = useState(null)
   const [nutricionista, setNutricionista] = useState(null)
-  const [resumen, setResumen] = useState({ racha: 0, semana: Array(7).fill(false) })
+  const [resumen, setResumen] = useState({
+    racha: 0,
+    semana: Array(7).fill(false),
+    semanal: {
+      rutina: { completados: 0, total: 0, porcentaje: 0 },
+      dieta: { completados: 0, total: 0, porcentaje: 0 },
+    },
+  })
   const [completadosHoy, setCompletadosHoy] = useState([])
   const [completadasHoy, setCompletadasHoy] = useState([])
   const [loading, setLoading] = useState(true)
@@ -76,13 +102,24 @@ export default function Dashboard() {
       setCompletadosHoy(prev =>
         data.completado ? [...prev, nombre] : prev.filter(n => n !== nombre)
       )
-      if (data.completado) {
-        setResumen(prev => {
-          const semana = [...prev.semana]
-          semana[weekday] = true
-          return { ...prev, semana }
-        })
-      }
+      setResumen(prev => {
+        const semana = [...prev.semana]
+        if (data.completado) semana[weekday] = true
+        const rutina = prev.semanal?.rutina ?? { completados: 0, total: 0, porcentaje: 0 }
+        const completados = Math.max(0, rutina.completados + (data.completado ? 1 : -1))
+        return {
+          ...prev,
+          semana,
+          semanal: {
+            ...prev.semanal,
+            rutina: {
+              ...rutina,
+              completados,
+              porcentaje: rutina.total > 0 ? Math.min(100, Math.round((completados / rutina.total) * 100)) : 0,
+            },
+          },
+        }
+      })
     } catch (err) {
       console.error('Error al actualizar ejercicio:', err)
     }
@@ -210,9 +247,23 @@ export default function Dashboard() {
               </p>
               <p className="text-sm font-semibold" style={{ color: '#fff' }}>Avance de hoy</p>
             </div>
-            <div className="text-right">
-              <p className="text-3xl font-bold" style={{ color: '#22c55e' }}>{pctGeneral}%</p>
-              <p className="text-xs" style={{ color: '#555' }}>general</p>
+            <div className="flex flex-wrap justify-end gap-4">
+              <PieProgress
+                label="Rutina semanal"
+                pct={resumen.semanal?.rutina?.porcentaje ?? 0}
+                value={`${resumen.semanal?.rutina?.completados ?? 0}/${resumen.semanal?.rutina?.total ?? 0}`}
+                color="#22c55e"
+              />
+              <PieProgress
+                label="Dieta semanal"
+                pct={resumen.semanal?.dieta?.porcentaje ?? 0}
+                value={`${resumen.semanal?.dieta?.completados ?? 0}/${resumen.semanal?.dieta?.total ?? 0}`}
+                color="#60a5fa"
+              />
+              <div className="text-right">
+                <p className="text-3xl font-bold" style={{ color: '#22c55e' }}>{pctGeneral}%</p>
+                <p className="text-xs" style={{ color: '#555' }}>hoy</p>
+              </div>
             </div>
           </div>
 

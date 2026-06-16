@@ -91,13 +91,37 @@ export const getResumenProgreso = async (req, res) => {
     const proximoLunes = new Date(lunesActual)
     proximoLunes.setDate(lunesActual.getDate() + 7)
 
-    const completadosSemana = await prisma.ejercicioCompletado.findMany({
-      where: {
-        usuario_id: req.user.id,
-        fecha: { gte: lunesActual, lt: proximoLunes },
-      },
-      select: { fecha: true },
-    })
+    const [
+      completadosSemana,
+      comidasSemana,
+      rutinaAsignada,
+      planAsignado,
+    ] = await Promise.all([
+      prisma.ejercicioCompletado.findMany({
+        where: {
+          usuario_id: req.user.id,
+          fecha: { gte: lunesActual, lt: proximoLunes },
+        },
+        select: { fecha: true },
+      }),
+      prisma.comidaCompletada.findMany({
+        where: {
+          usuario_id: req.user.id,
+          fecha: { gte: lunesActual, lt: proximoLunes },
+        },
+        select: { fecha: true },
+      }),
+      prisma.rutina.findFirst({
+        where: { usuario_id: req.user.id },
+        orderBy: { created_at: 'desc' },
+        select: { ejercicios: true },
+      }),
+      prisma.planAlimenticio.findFirst({
+        where: { usuario_id: req.user.id },
+        orderBy: { created_at: 'desc' },
+        select: { dias: true },
+      }),
+    ])
 
     const semana = Array(7).fill(false)
     completadosSemana.forEach(c => {
@@ -105,6 +129,23 @@ export const getResumenProgreso = async (req, res) => {
       d.setHours(0, 0, 0, 0)
       semana[(d.getDay() + 6) % 7] = true
     })
+
+    const totalEjerciciosSemana = (rutinaAsignada?.ejercicios || []).reduce(
+      (sum, dia) => sum + (dia.ejercicios?.length ?? 0),
+      0
+    )
+    const totalComidasSemana = (planAsignado?.dias || []).reduce(
+      (sum, dia) => sum + (dia.comidas?.length ?? 0),
+      0
+    )
+    const rutinaCompletadaSemana = completadosSemana.length
+    const dietaCompletadaSemana = comidasSemana.length
+    const pctRutinaSemana = totalEjerciciosSemana > 0
+      ? Math.min(100, Math.round((rutinaCompletadaSemana / totalEjerciciosSemana) * 100))
+      : 0
+    const pctDietaSemana = totalComidasSemana > 0
+      ? Math.min(100, Math.round((dietaCompletadaSemana / totalComidasSemana) * 100))
+      : 0
 
     const hace60 = new Date(hoy)
     hace60.setDate(hoy.getDate() - 60)
@@ -137,7 +178,22 @@ export const getResumenProgreso = async (req, res) => {
       cursor.setDate(cursor.getDate() - 1)
     }
 
-    res.json({ racha, semana })
+    res.json({
+      racha,
+      semana,
+      semanal: {
+        rutina: {
+          completados: rutinaCompletadaSemana,
+          total: totalEjerciciosSemana,
+          porcentaje: pctRutinaSemana,
+        },
+        dieta: {
+          completados: dietaCompletadaSemana,
+          total: totalComidasSemana,
+          porcentaje: pctDietaSemana,
+        },
+      },
+    })
   } catch (err) {
     console.error('getResumenProgreso:', err)
     res.status(500).json({ error: 'Error al obtener resumen' })
