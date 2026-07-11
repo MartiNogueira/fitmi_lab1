@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { registerProfesional } from '../api/auth'
+import { getApiErrorMessage, registerProfesional } from '../api/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -22,7 +22,7 @@ export default function RegisterProfesional() {
       await registerProfesional(name, email, password, especialidad)
       setSuccess(true)
     } catch (err) {
-      setError(err.response?.data?.error || 'Error al registrarse')
+      setError(getApiErrorMessage(err, 'Error al registrarse'))
     } finally {
       setLoading(false)
     }

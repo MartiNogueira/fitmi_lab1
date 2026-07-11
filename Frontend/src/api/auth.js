@@ -1,7 +1,9 @@
 import axios from 'axios'
 
+const apiBaseURL = import.meta.env.VITE_API_URL || '/api'
+
 const api = axios.create({
-  baseURL: 'http://localhost:3000/api',
+  baseURL: apiBaseURL,
 })
 
 api.interceptors.request.use((config) => {
@@ -9,6 +11,14 @@ api.interceptors.request.use((config) => {
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
+
+export const getApiErrorMessage = (err, fallback = 'Ocurrió un error') => {
+  if (err.response?.data?.error) return err.response.data.error
+  if (err.code === 'ERR_NETWORK' || !err.response) {
+    return 'No se pudo conectar con el servidor. Verificá que el backend esté corriendo.'
+  }
+  return fallback
+}
 
 export const register = (name, email, password) =>
   api.post('/auth/register', { name, email, password })
