@@ -1,7 +1,9 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import AppLayout from '../components/AppLayout'
 import { getExercises } from '../api/exercisedb'
-import { getMiRutina, getCompletadosRutina, toggleEjercicio } from '../api/auth'
+import { getRutinas, getCompletadosRutina, toggleEjercicio } from '../api/auth'
+import { Check, ChevronDown } from 'lucide-react'
+import { getSelectedRutinaId, setSelectedRutinaId as setStoredSelectedRutinaId } from '../utils/rutinaSelection'
 
 const inputStyle = {
   backgroundColor: '#0a0a0a',
@@ -396,12 +398,152 @@ function TabExplorar() {
   )
 }
 
+const miniInput = {
+  backgroundColor: '#0a0a0a',
+  border: '1px solid #1a1a1a',
+  borderRadius: '6px',
+  padding: '7px 10px',
+  color: '#fff',
+  fontSize: '13px',
+  width: '100%',
+  outline: 'none',
+}
+
+function EjercicioRow({ ej, diaNum, done, registro, toggling, onToggle, expanded, onExpand, onSaveDetalle, saving }) {
+  const [peso, setPeso] = useState('')
+  const [reps, setReps] = useState('')
+  const [notas, setNotas] = useState('')
+
+  useEffect(() => {
+    setPeso(registro?.peso_kg ?? '')
+    setReps(registro?.reps_realizadas ?? '')
+    setNotas(registro?.notas ?? '')
+  }, [registro, expanded])
+
+  const hasDetalle = registro?.peso_kg || registro?.reps_realizadas
+
+  return (
+    <div style={{
+      border: done ? '1px solid #22c55e44' : '1px solid #111',
+      borderRadius: '8px',
+      backgroundColor: done ? '#0a1a0a' : '#000',
+    }}>
+      <div className="flex items-center gap-3" style={{ padding: '14px 16px' }}>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onToggle() }}
+          disabled={toggling}
+          style={{
+            width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0,
+            border: done ? '2px solid #22c55e' : '2px solid #333',
+            backgroundColor: done ? '#22c55e' : 'transparent',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: toggling ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {done && <span style={{ color: '#000', fontSize: '11px', fontWeight: 'bold' }}>✓</span>}
+        </button>
+
+        <button
+          type="button"
+          onClick={onExpand}
+          className="flex-1 min-w-0 text-left"
+          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+        >
+          <p className="text-sm font-medium" style={{ color: done ? '#22c55e' : '#fff' }}>
+            {ej.nombre}
+          </p>
+          <p className="text-xs mt-0.5" style={{ color: '#555' }}>
+            {[ej.series && `${ej.series} series`, ej.reps && `${ej.reps} reps`].filter(Boolean).join(' × ')}
+            {hasDetalle && (
+              <span style={{ color: '#22c55e88' }}>
+                {' · '}
+                {[registro.peso_kg && `${registro.peso_kg} kg`, registro.reps_realizadas].filter(Boolean).join(' · ')}
+              </span>
+            )}
+          </p>
+          {ej.notas && <p className="text-xs mt-0.5 truncate" style={{ color: '#444' }}>{ej.notas}</p>}
+        </button>
+
+        <button
+          type="button"
+          onClick={onExpand}
+          style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer', flexShrink: 0 }}
+        >
+          <ChevronDown
+            size={14}
+            style={{ color: '#333', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
+          />
+        </button>
+      </div>
+
+      {expanded && (
+        <div style={{ borderTop: '1px solid #0d0d0d', padding: '12px 16px 14px' }}>
+          <div className="flex gap-2 mb-2">
+            <div style={{ flex: 1 }}>
+              <p className="text-xs mb-1" style={{ color: '#444', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Peso (kg)</p>
+              <input
+                type="number"
+                min="0"
+                step="0.5"
+                value={peso}
+                onChange={e => setPeso(e.target.value)}
+                placeholder="0"
+                style={miniInput}
+              />
+            </div>
+            <div style={{ flex: 2 }}>
+              <p className="text-xs mb-1" style={{ color: '#444', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Reps realizadas</p>
+              <input
+                type="text"
+                value={reps}
+                onChange={e => setReps(e.target.value)}
+                placeholder="ej: 12, 10, 8"
+                style={miniInput}
+              />
+            </div>
+          </div>
+          <div className="mb-3">
+            <p className="text-xs mb-1" style={{ color: '#444', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Notas</p>
+            <input
+              type="text"
+              value={notas}
+              onChange={e => setNotas(e.target.value)}
+              placeholder="Opcional..."
+              style={miniInput}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => onSaveDetalle(peso || null, reps || null, notas || null)}
+            disabled={saving}
+            style={{
+              backgroundColor: '#22c55e', color: '#000', borderRadius: '6px',
+              padding: '7px 18px', fontSize: '13px', fontWeight: '600',
+              border: 'none', cursor: saving ? 'not-allowed' : 'pointer',
+              opacity: saving ? 0.7 : 1,
+            }}
+          >
+            {saving ? 'Guardando...' : 'Guardar'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function TabMiRutina() {
-  const [rutina, setRutina] = useState(null)
+  const [rutinas, setRutinas] = useState([])
+  const [selectedRutinaId, setSelectedRutinaId] = useState(null)
+  const [selectorOpen, setSelectorOpen] = useState(false)
   const [completados, setCompletados] = useState([])
   const [diaActivo, setDiaActivo] = useState(0)
   const [loading, setLoading] = useState(true)
   const [toggling, setToggling] = useState(null)
+  const [expandedKey, setExpandedKey] = useState(null)
+  const [savingDetail, setSavingDetail] = useState(null)
+
+  const rutina = rutinas.find((item) => item.id === selectedRutinaId) ?? null
 
   const cargarCompletados = useCallback(async (rutina_id) => {
     const { data } = await getCompletadosRutina(rutina_id)
@@ -409,30 +551,75 @@ function TabMiRutina() {
   }, [])
 
   useEffect(() => {
-    getMiRutina()
+    getRutinas()
       .then(({ data }) => {
-        setRutina(data)
-        if (data) cargarCompletados(data.id)
+        setRutinas(data)
+        const storedId = getSelectedRutinaId()
+        const initial = data.find((item) => item.id === storedId) ?? data[0]
+        if (initial) {
+          setSelectedRutinaId(initial.id)
+          setStoredSelectedRutinaId(initial.id)
+        }
       })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [cargarCompletados])
+  }, [])
+
+  useEffect(() => {
+    if (!selectedRutinaId) return
+    setDiaActivo(0)
+    setCompletados([])
+    setExpandedKey(null)
+    cargarCompletados(selectedRutinaId).catch(() => {})
+  }, [selectedRutinaId, cargarCompletados])
 
   const isCompletado = (dia_numero, ejercicio_nombre) =>
     completados.some(c => c.dia_numero === dia_numero && c.ejercicio_nombre === ejercicio_nombre)
 
+  const getRegistro = (dia_numero, ejercicio_nombre) =>
+    completados.find(c => c.dia_numero === dia_numero && c.ejercicio_nombre === ejercicio_nombre) ?? null
+
   const handleToggle = async (dia_numero, ejercicio_nombre) => {
+    if (!rutina) return
     const key = `${dia_numero}-${ejercicio_nombre}`
     setToggling(key)
     try {
       const { data } = await toggleEjercicio({ rutina_id: rutina.id, dia_numero, ejercicio_nombre })
       if (data.completado) {
-        setCompletados(prev => [...prev, { dia_numero, ejercicio_nombre }])
+        setCompletados(prev => {
+          const filtered = prev.filter(c => !(c.dia_numero === dia_numero && c.ejercicio_nombre === ejercicio_nombre))
+          return [...filtered, data.registro ?? { dia_numero, ejercicio_nombre }]
+        })
       } else {
         setCompletados(prev => prev.filter(c => !(c.dia_numero === dia_numero && c.ejercicio_nombre === ejercicio_nombre)))
+        if (expandedKey === key) setExpandedKey(null)
       }
     } catch {}
     setToggling(null)
+  }
+
+  const handleSaveDetalle = async (dia_numero, ejercicio_nombre, peso_kg, reps_realizadas, notas) => {
+    if (!rutina) return
+    const key = `${dia_numero}-${ejercicio_nombre}`
+    setSavingDetail(key)
+    try {
+      const { data } = await toggleEjercicio({
+        rutina_id: rutina.id,
+        dia_numero,
+        ejercicio_nombre,
+        peso_kg: peso_kg ? Number(peso_kg) : undefined,
+        reps_realizadas: reps_realizadas || undefined,
+        notas: notas || undefined,
+      })
+      if (data.completado && data.registro) {
+        setCompletados(prev => {
+          const filtered = prev.filter(c => !(c.dia_numero === dia_numero && c.ejercicio_nombre === ejercicio_nombre))
+          return [...filtered, data.registro]
+        })
+      }
+      setExpandedKey(null)
+    } catch {}
+    setSavingDetail(null)
   }
 
   if (loading) return <p className="text-sm py-8" style={{ color: '#444' }}>Cargando...</p>
@@ -441,21 +628,73 @@ function TabMiRutina() {
     return (
       <div style={cardStyle}>
         <p className="text-sm text-center py-6" style={{ color: '#444' }}>
-          No tenés una rutina asignada todavía.
+          No tenés rutinas creadas todavía.
         </p>
-        <p className="text-xs text-center" style={{ color: '#333' }}>Tu entrenador te asignará una cuando esté lista.</p>
+        <p className="text-xs text-center" style={{ color: '#333' }}>Creá una rutina para empezar a registrar tu entrenamiento.</p>
       </div>
     )
   }
 
-  const dia = rutina.ejercicios[diaActivo]
+  const dia = rutina.ejercicios?.[diaActivo] ?? { dia: 1, nombre: 'Día 1', ejercicios: [] }
   const completadosHoy = dia.ejercicios.filter(e => isCompletado(dia.dia, e.nombre)).length
 
   return (
     <div>
       <div className="mb-4">
-        <p className="text-sm font-medium" style={{ color: '#fff' }}>{rutina.nombre}</p>
-        <p className="text-xs mt-0.5" style={{ color: '#555' }}>{rutina.objetivo} · {rutina.dias_semana} días/semana</p>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setSelectorOpen((open) => !open)}
+            className="flex w-full items-center justify-between gap-3 rounded-lg px-4 py-3 text-left transition-colors"
+            style={{ border: '1px solid #111', backgroundColor: '#050505' }}
+          >
+            <span className="min-w-0">
+              <span className="block text-sm font-medium truncate" style={{ color: '#fff' }}>{rutina.nombre}</span>
+              <span className="block text-xs mt-0.5 truncate" style={{ color: '#555' }}>
+                {rutina.objetivo} · {rutina.dias_semana} días/semana
+              </span>
+            </span>
+            <ChevronDown
+              size={18}
+              className="shrink-0 transition-transform"
+              style={{ color: '#22c55e', transform: selectorOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
+            />
+          </button>
+
+          {selectorOpen && (
+            <div
+              className="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-lg"
+              style={{ border: '1px solid #1a1a1a', backgroundColor: '#050505', boxShadow: '0 16px 40px rgba(0,0,0,0.45)' }}
+            >
+              {rutinas.map((item) => {
+                const selected = item.id === selectedRutinaId
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedRutinaId(item.id)
+                      setStoredSelectedRutinaId(item.id)
+                      setSelectorOpen(false)
+                    }}
+                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-[#0a0a0a]"
+                    style={{ borderBottom: '1px solid #111' }}
+                  >
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium truncate" style={{ color: selected ? '#22c55e' : '#fff' }}>
+                        {item.nombre}
+                      </span>
+                      <span className="block text-xs mt-0.5 truncate" style={{ color: '#555' }}>
+                        {item.objetivo} · {item.dias_semana} días/semana
+                      </span>
+                    </span>
+                    {selected && <Check size={16} style={{ color: '#22c55e' }} />}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Selector de días */}
@@ -497,41 +736,23 @@ function TabMiRutina() {
         {dia.ejercicios.length === 0 ? (
           <p className="text-sm" style={{ color: '#444' }}>No hay ejercicios para este día.</p>
         ) : dia.ejercicios.map((ej) => {
-          const done = isCompletado(dia.dia, ej.nombre)
           const key = `${dia.dia}-${ej.nombre}`
+          const done = isCompletado(dia.dia, ej.nombre)
+          const registro = getRegistro(dia.dia, ej.nombre)
           return (
-            <button key={key}
-              onClick={() => handleToggle(dia.dia, ej.nombre)}
-              disabled={toggling === key}
-              className="flex items-center gap-4 text-left transition-all"
-              style={{
-                border: done ? '1px solid #22c55e44' : '1px solid #111',
-                borderRadius: '8px',
-                backgroundColor: done ? '#0a1a0a' : '#000',
-                padding: '14px 16px',
-                opacity: toggling === key ? 0.6 : 1,
-              }}>
-              <div style={{
-                width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0,
-                border: done ? '2px solid #22c55e' : '2px solid #333',
-                backgroundColor: done ? '#22c55e' : 'transparent',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                {done && <span style={{ color: '#000', fontSize: '11px', fontWeight: 'bold' }}>✓</span>}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium"
-                  style={{ color: done ? '#22c55e' : '#fff', textDecoration: done ? 'line-through' : 'none' }}>
-                  {ej.nombre}
-                </p>
-                {(ej.series || ej.reps) && (
-                  <p className="text-xs mt-0.5" style={{ color: '#555' }}>
-                    {[ej.series && `${ej.series} series`, ej.reps && `${ej.reps} reps`].filter(Boolean).join(' × ')}
-                  </p>
-                )}
-                {ej.notas && <p className="text-xs mt-0.5 truncate" style={{ color: '#444' }}>{ej.notas}</p>}
-              </div>
-            </button>
+            <EjercicioRow
+              key={key}
+              ej={ej}
+              diaNum={dia.dia}
+              done={done}
+              registro={registro}
+              toggling={toggling === key}
+              onToggle={() => handleToggle(dia.dia, ej.nombre)}
+              expanded={expandedKey === key}
+              onExpand={() => setExpandedKey(expandedKey === key ? null : key)}
+              onSaveDetalle={(peso, reps, notas) => handleSaveDetalle(dia.dia, ej.nombre, peso, reps, notas)}
+              saving={savingDetail === key}
+            />
           )
         })}
       </div>

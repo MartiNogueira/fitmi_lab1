@@ -1,8 +1,12 @@
 import express from 'express'
+import http from 'http'
 import cors from 'cors'
 import dotenv from 'dotenv'
+import { dirname, resolve } from 'path'
+import { fileURLToPath } from 'url'
 
-dotenv.config()
+const __dirname = dirname(fileURLToPath(import.meta.url))
+dotenv.config({ path: resolve(__dirname, '../.env') })
 import * as dbConnection from './db/connection.js'
 
 import authRoutes from './routes/auth.routes.js'
@@ -14,8 +18,13 @@ import progresoRoutes from './routes/progreso.routes.js'
 import vinculoRoutes from './routes/vinculo.routes.js'
 import mensajesRoutes from './routes/mensajes.routes.js'
 import comunidadesRoutes from './routes/comunidades.routes.js'
+import registrosRoutes from './routes/registros.routes.js'
+import { startActivityReminderJob } from './services/progress-mail.service.js'
+import { initSocket } from './socket.js'
 
 const app = express()
+const server = http.createServer(app)
+initSocket(server)
 
 app.use(cors())
 app.use(express.json())
@@ -29,6 +38,10 @@ app.use('/api/progreso', progresoRoutes)
 app.use('/api/vinculos', vinculoRoutes)
 app.use('/api/mensajes', mensajesRoutes)
 app.use('/api/comunidades', comunidadesRoutes)
+app.use('/api/registros', registrosRoutes)
 
 const PORT = process.env.PORT || 3000
-app.listen(PORT, () => console.log(`Fitmi server corriendo en puerto ${PORT}`))
+server.listen(PORT, () => {
+  console.log(`Fitmi server corriendo en puerto ${PORT}`)
+  startActivityReminderJob()
+})

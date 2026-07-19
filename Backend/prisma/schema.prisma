@@ -34,6 +34,7 @@ model Usuario {
   planAsignado          PlanAlimenticio[]     @relation("PlanCliente")
   ejerciciosCompletados EjercicioCompletado[]
   comidasCompletadas    ComidaCompletada[]
+  pesosCorporales       PesoCorporal[]
   vinculosComoUsuario   Vinculo[]             @relation("VinculosComoUsuario")
   vinculosComoProfesional Vinculo[]           @relation("VinculosComoProfesional")
   mensajesEnviados        Mensaje[]           @relation("MensajesEnviados")
@@ -96,17 +97,32 @@ model EjercicioCompletado {
   dia_numero       Int
   ejercicio_nombre String
   fecha            DateTime @default(now())
+  peso_kg          Float?
+  reps_realizadas  String?
+  notas            String?
 }
 
 model ComidaCompletada {
-  id            Int             @id @default(autoincrement())
-  usuario_id    Int
-  usuario       Usuario         @relation(fields: [usuario_id], references: [id_usuario])
-  plan_id       Int
-  plan          PlanAlimenticio @relation(fields: [plan_id], references: [id])
-  dia_numero    Int
-  comida_nombre String
-  fecha         DateTime        @default(now())
+  id                    Int             @id @default(autoincrement())
+  usuario_id            Int
+  usuario               Usuario         @relation(fields: [usuario_id], references: [id_usuario])
+  plan_id               Int
+  plan                  PlanAlimenticio @relation(fields: [plan_id], references: [id])
+  dia_numero            Int
+  comida_nombre         String
+  fecha                 DateTime        @default(now())
+  estado                String          @default("completada")
+  gramos                Int?
+  descripcion_reemplazo String?
+}
+
+model PesoCorporal {
+  id         Int      @id @default(autoincrement())
+  usuario_id Int
+  usuario    Usuario  @relation(fields: [usuario_id], references: [id_usuario])
+  peso_kg    Float
+  fecha      DateTime @default(now())
+  created_at DateTime @default(now())
 }
 
 model Comunidad {

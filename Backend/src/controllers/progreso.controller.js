@@ -1,4 +1,8 @@
 import prisma from '../db/prisma.js'
+import {
+  sendInactivityReminders,
+  sendProgressReportToProfessionals,
+} from '../services/progress-mail.service.js'
 
 function hoyRango() {
   const hoy = new Date()
@@ -42,7 +46,7 @@ export const getCompletadosRutina = async (req, res) => {
 }
 
 export const toggleEjercicio = async (req, res) => {
-  const { rutina_id, dia_numero, ejercicio_nombre } = req.body
+  const { rutina_id, dia_numero, ejercicio_nombre, peso_kg, reps_realizadas, notas } = req.body
   if (!rutina_id || dia_numero == null || !ejercicio_nombre) {
     return res.status(400).json({ error: 'Faltan campos requeridos' })
   }
@@ -58,18 +62,33 @@ export const toggleEjercicio = async (req, res) => {
       },
     })
     if (existing) {
+      // Si vienen datos de detalle, actualizar en vez de borrar
+      if (peso_kg !== undefined || reps_realizadas !== undefined || notas !== undefined) {
+        const updated = await prisma.ejercicioCompletado.update({
+          where: { id: existing.id },
+          data: {
+            peso_kg: peso_kg ? Number(peso_kg) : existing.peso_kg,
+            reps_realizadas: reps_realizadas ?? existing.reps_realizadas,
+            notas: notas ?? existing.notas,
+          },
+        })
+        return res.json({ completado: true, registro: updated })
+      }
       await prisma.ejercicioCompletado.delete({ where: { id: existing.id } })
       return res.json({ completado: false })
     }
-    await prisma.ejercicioCompletado.create({
+    const created = await prisma.ejercicioCompletado.create({
       data: {
         usuario_id: req.user.id,
         rutina_id: Number(rutina_id),
         dia_numero: Number(dia_numero),
         ejercicio_nombre,
+        peso_kg: peso_kg ? Number(peso_kg) : null,
+        reps_realizadas: reps_realizadas ?? null,
+        notas: notas ?? null,
       },
     })
-    res.json({ completado: true })
+    res.json({ completado: true, registro: created })
   } catch (err) {
     console.error('toggleEjercicio:', err)
     res.status(500).json({ error: 'Error al actualizar progreso' })
@@ -87,13 +106,37 @@ export const getResumenProgreso = async (req, res) => {
     const proximoLunes = new Date(lunesActual)
     proximoLunes.setDate(lunesActual.getDate() + 7)
 
-    const completadosSemana = await prisma.ejercicioCompletado.findMany({
-      where: {
-        usuario_id: req.user.id,
-        fecha: { gte: lunesActual, lt: proximoLunes },
-      },
-      select: { fecha: true },
-    })
+    const [
+      completadosSemana,
+      comidasSemana,
+      rutinaAsignada,
+      planAsignado,
+    ] = await Promise.all([
+      prisma.ejercicioCompletado.findMany({
+        where: {
+          usuario_id: req.user.id,
+          fecha: { gte: lunesActual, lt: proximoLunes },
+        },
+        select: { fecha: true },
+      }),
+      prisma.comidaCompletada.findMany({
+        where: {
+          usuario_id: req.user.id,
+          fecha: { gte: lunesActual, lt: proximoLunes },
+        },
+        select: { fecha: true },
+      }),
+      prisma.rutina.findFirst({
+        where: { usuario_id: req.user.id },
+        orderBy: { created_at: 'desc' },
+        select: { ejercicios: true },
+      }),
+      prisma.planAlimenticio.findFirst({
+        where: { usuario_id: req.user.id },
+        orderBy: { created_at: 'desc' },
+        select: { dias: true },
+      }),
+    ])
 
     const semana = Array(7).fill(false)
     completadosSemana.forEach(c => {
@@ -101,6 +144,23 @@ export const getResumenProgreso = async (req, res) => {
       d.setHours(0, 0, 0, 0)
       semana[(d.getDay() + 6) % 7] = true
     })
+
+    const totalEjerciciosSemana = (rutinaAsignada?.ejercicios || []).reduce(
+      (sum, dia) => sum + (dia.ejercicios?.length ?? 0),
+      0
+    )
+    const totalComidasSemana = (planAsignado?.dias || []).reduce(
+      (sum, dia) => sum + (dia.comidas?.length ?? 0),
+      0
+    )
+    const rutinaCompletadaSemana = completadosSemana.length
+    const dietaCompletadaSemana = comidasSemana.length
+    const pctRutinaSemana = totalEjerciciosSemana > 0
+      ? Math.min(100, Math.round((rutinaCompletadaSemana / totalEjerciciosSemana) * 100))
+      : 0
+    const pctDietaSemana = totalComidasSemana > 0
+      ? Math.min(100, Math.round((dietaCompletadaSemana / totalComidasSemana) * 100))
+      : 0
 
     const hace60 = new Date(hoy)
     hace60.setDate(hoy.getDate() - 60)
@@ -133,7 +193,22 @@ export const getResumenProgreso = async (req, res) => {
       cursor.setDate(cursor.getDate() - 1)
     }
 
-    res.json({ racha, semana })
+    res.json({
+      racha,
+      semana,
+      semanal: {
+        rutina: {
+          completados: rutinaCompletadaSemana,
+          total: totalEjerciciosSemana,
+          porcentaje: pctRutinaSemana,
+        },
+        dieta: {
+          completados: dietaCompletadaSemana,
+          total: totalComidasSemana,
+          porcentaje: pctDietaSemana,
+        },
+      },
+    })
   } catch (err) {
     console.error('getResumenProgreso:', err)
     res.status(500).json({ error: 'Error al obtener resumen' })
@@ -174,10 +249,11 @@ export const getCompletadasPlan = async (req, res) => {
 }
 
 export const toggleComida = async (req, res) => {
-  const { plan_id, dia_numero, comida_nombre } = req.body
+  const { plan_id, dia_numero, comida_nombre, estado, gramos, descripcion_reemplazo } = req.body
   if (!plan_id || dia_numero == null || !comida_nombre) {
     return res.status(400).json({ error: 'Faltan campos requeridos' })
   }
+  const estadoFinal = estado || 'completada'
   const { hoy, manana } = hoyRango()
   try {
     const existing = await prisma.comidaCompletada.findFirst({
@@ -190,20 +266,240 @@ export const toggleComida = async (req, res) => {
       },
     })
     if (existing) {
+      // Si viene un estado nuevo, actualizar
+      if (estado) {
+        const updated = await prisma.comidaCompletada.update({
+          where: { id: existing.id },
+          data: {
+            estado: estadoFinal,
+            gramos: gramos ? Number(gramos) : null,
+            descripcion_reemplazo: descripcion_reemplazo ?? null,
+          },
+        })
+        return res.json({ completado: true, registro: updated })
+      }
       await prisma.comidaCompletada.delete({ where: { id: existing.id } })
       return res.json({ completado: false })
     }
-    await prisma.comidaCompletada.create({
+    const created = await prisma.comidaCompletada.create({
       data: {
         usuario_id: req.user.id,
         plan_id: Number(plan_id),
         dia_numero: Number(dia_numero),
         comida_nombre,
+        estado: estadoFinal,
+        gramos: gramos ? Number(gramos) : null,
+        descripcion_reemplazo: descripcion_reemplazo ?? null,
       },
     })
-    res.json({ completado: true })
+    res.json({ completado: true, registro: created })
   } catch (err) {
     console.error('toggleComida:', err)
     res.status(500).json({ error: 'Error al actualizar progreso' })
+  }
+}
+
+// ── Progreso mensual (últimos 30 días) ───────────────────────────────────────
+
+export const getProgresoMensual = async (req, res) => {
+  try {
+    const hoy = new Date()
+    hoy.setHours(23, 59, 59, 999)
+    const hace30 = new Date()
+    hace30.setDate(hace30.getDate() - 30)
+    hace30.setHours(0, 0, 0, 0)
+
+    const [rutina, plan] = await Promise.all([
+      prisma.rutina.findFirst({ where: { usuario_id: req.user.id }, orderBy: { created_at: 'desc' } }),
+      prisma.planAlimenticio.findFirst({ where: { usuario_id: req.user.id }, orderBy: { created_at: 'desc' } }),
+    ])
+
+    const [ejerciciosCompletados, comidasCompletadas, pesosCorporales] = await Promise.all([
+      rutina ? prisma.ejercicioCompletado.findMany({
+        where: { usuario_id: req.user.id, rutina_id: rutina.id, fecha: { gte: hace30, lte: hoy } },
+      }) : [],
+      plan ? prisma.comidaCompletada.findMany({
+        where: { usuario_id: req.user.id, plan_id: plan.id, fecha: { gte: hace30, lte: hoy } },
+      }) : [],
+      prisma.pesoCorporal.findMany({
+        where: { usuario_id: req.user.id, fecha: { gte: hace30, lte: hoy } },
+        orderBy: { fecha: 'asc' },
+      }),
+    ])
+
+    const totalEjerciciosPorDia = {}
+    const totalComidasPorDia = {}
+    if (rutina?.ejercicios) {
+      rutina.ejercicios.forEach(d => {
+        totalEjerciciosPorDia[d.dia] = d.ejercicios?.length ?? 0
+      })
+    }
+    if (plan?.dias) {
+      plan.dias.forEach(d => {
+        totalComidasPorDia[d.dia] = d.comidas?.length ?? 0
+      })
+    }
+
+    const diasMap = {}
+    for (let i = 0; i <= 30; i++) {
+      const d = new Date(hace30)
+      d.setDate(d.getDate() + i)
+      const key = d.toISOString().split('T')[0]
+      diasMap[key] = { fecha: key, ejercicios_completados: 0, ejercicios_totales: 0, comidas_completadas: 0, comidas_omitidas: 0, comidas_totales: 0 }
+    }
+
+    ejerciciosCompletados.forEach(e => {
+      const key = new Date(e.fecha).toISOString().split('T')[0]
+      if (diasMap[key]) diasMap[key].ejercicios_completados++
+    })
+
+    comidasCompletadas.forEach(c => {
+      const key = new Date(c.fecha).toISOString().split('T')[0]
+      if (diasMap[key]) {
+        if (c.estado === 'omitida') diasMap[key].comidas_omitidas++
+        else diasMap[key].comidas_completadas++
+      }
+    })
+
+    Object.values(diasMap).forEach(d => {
+      const dayOfWeek = ((new Date(d.fecha).getDay() + 6) % 7) + 1
+      d.ejercicios_totales = totalEjerciciosPorDia[dayOfWeek] ?? 0
+      d.comidas_totales = totalComidasPorDia[dayOfWeek] ?? (plan ? Object.values(totalComidasPorDia)[0] ?? 0 : 0)
+    })
+
+    const ejercicioMap = {}
+    ejerciciosCompletados.forEach(e => {
+      if (!ejercicioMap[e.ejercicio_nombre]) ejercicioMap[e.ejercicio_nombre] = []
+      ejercicioMap[e.ejercicio_nombre].push({
+        fecha: new Date(e.fecha).toISOString().split('T')[0],
+        peso_kg: e.peso_kg,
+        reps_realizadas: e.reps_realizadas,
+      })
+    })
+    const progresionEjercicios = Object.entries(ejercicioMap).map(([nombre, registros]) => ({
+      nombre,
+      registros: registros.sort((a, b) => a.fecha.localeCompare(b.fecha)),
+    }))
+
+    res.json({
+      dias: Object.values(diasMap),
+      pesosCorporales,
+      progresionEjercicios,
+    })
+  } catch (err) {
+    console.error('getProgresoMensual:', err)
+    res.status(500).json({ error: 'Error al obtener progreso mensual' })
+  }
+}
+
+// ── Historial por fecha ───────────────────────────────────────────────────────
+
+export const getHistorialFecha = async (req, res) => {
+  const { fecha } = req.params
+  try {
+    const dia = new Date(fecha)
+    dia.setHours(0, 0, 0, 0)
+    const diaSiguiente = new Date(dia)
+    diaSiguiente.setDate(diaSiguiente.getDate() + 1)
+
+    const [ejercicios, comidas] = await Promise.all([
+      prisma.ejercicioCompletado.findMany({
+        where: { usuario_id: req.user.id, fecha: { gte: dia, lt: diaSiguiente } },
+        orderBy: { ejercicio_nombre: 'asc' },
+      }),
+      prisma.comidaCompletada.findMany({
+        where: { usuario_id: req.user.id, fecha: { gte: dia, lt: diaSiguiente } },
+        orderBy: { comida_nombre: 'asc' },
+      }),
+    ])
+
+    res.json({ fecha, ejercicios, comidas })
+  } catch (err) {
+    console.error('getHistorialFecha:', err)
+    res.status(500).json({ error: 'Error al obtener historial' })
+  }
+}
+
+// ── Envío de avances y recordatorios (email / notificación) ──────────────────
+
+export const enviarAvancePorEmail = async (req, res) => {
+  const dias = Number(req.body?.dias || 7)
+  if (!Number.isInteger(dias) || dias < 1 || dias > 60) {
+    return res.status(400).json({ error: 'La cantidad de días debe estar entre 1 y 60' })
+  }
+  try {
+    const result = await sendProgressReportToProfessionals(req.user.id, dias)
+    if (result.sent === 0) {
+      return res.status(400).json({ error: 'No tenés profesionales asignados para enviar el avance' })
+    }
+    res.json({
+      message: `Avance enviado a la casilla de ${result.sent} profesional${result.sent === 1 ? '' : 'es'}`,
+      ...result,
+    })
+  } catch (err) {
+    console.error('enviarAvancePorEmail:', err)
+    res.status(500).json({ error: 'Error al enviar avance por email' })
+  }
+}
+
+export const enviarRecordatoriosInactividad = async (req, res) => {
+  const dias = Number(req.body?.dias || process.env.ACTIVITY_REMINDER_DAYS || 4)
+  if (!Number.isInteger(dias) || dias < 1 || dias > 30) {
+    return res.status(400).json({ error: 'La cantidad de días debe estar entre 1 y 30' })
+  }
+  try {
+    const result = await sendInactivityReminders(dias)
+    res.json({
+      message: result.devMode
+        ? `Recordatorios generados en modo desarrollo: ${result.sent}. Configurá SMTP para enviarlos por mail.`
+        : `Recordatorios enviados: ${result.sent}`,
+      ...result,
+    })
+  } catch (err) {
+    console.error('enviarRecordatoriosInactividad:', err)
+    res.status(500).json({ error: 'Error al enviar recordatorios' })
+  }
+}
+
+export const enviarRecordatorioProgreso = async (req, res) => {
+  const usuarioId = Number(req.body?.usuario_id)
+  if (!usuarioId) {
+    return res.status(400).json({ error: 'Usuario requerido' })
+  }
+  if (!['entrenador', 'nutricionista'].includes(req.user.rol)) {
+    return res.status(403).json({ error: 'Solo profesionales pueden enviar recordatorios' })
+  }
+  try {
+    const vinculo = await prisma.vinculo.findFirst({
+      where: { usuario_id: usuarioId, profesional_id: req.user.id, estado: 'activo' },
+      include: {
+        usuario: { select: { id_usuario: true, nombre_usuario: true, email: true } },
+        profesional: { select: { id_usuario: true, nombre_usuario: true, rol: true } },
+      },
+    })
+    if (!vinculo) {
+      return res.status(404).json({ error: 'Alumno no encontrado o no vinculado' })
+    }
+    const notificacion = await prisma.notificacion.create({
+      data: {
+        destinatario_id: usuarioId,
+        tipo: 'recordatorio_progreso',
+        mensaje: `${vinculo.profesional.nombre_usuario} te recuerda que envíes tu progreso.`,
+        data: {
+          profesional_id: vinculo.profesional.id_usuario,
+          profesional_nombre: vinculo.profesional.nombre_usuario,
+          profesional_rol: vinculo.profesional.rol,
+          usuario_id: vinculo.usuario.id_usuario,
+          usuario_nombre: vinculo.usuario.nombre_usuario,
+        },
+      },
+    })
+    res.status(201).json({
+      message: `Recordatorio enviado a ${vinculo.usuario.nombre_usuario}`,
+      notificacion,
+    })
+  } catch (err) {
+    console.error('enviarRecordatorioProgreso:', err)
+    res.status(500).json({ error: 'Error al enviar recordatorio' })
   }
 }

@@ -93,17 +93,25 @@ export default function Progreso() {
                           <p className="text-xs font-medium mb-2" style={{ color: '#333' }}>{dia.nombre}</p>
                           <div className="flex flex-col gap-1.5">
                             {(dia.ejercicios || []).map((ej) => {
-                              const done = completadosDia.some((c) => c.ejercicio_nombre === ej.nombre)
+                              const registro = completadosDia.find((c) => c.ejercicio_nombre === ej.nombre)
+                              const done = Boolean(registro)
                               return (
-                                <div key={ej.nombre} className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <div className="w-3 h-3 rounded-full shrink-0"
+                                <div key={ej.nombre} className="flex items-start justify-between gap-2">
+                                  <div className="flex items-start gap-2 min-w-0">
+                                    <div className="w-3 h-3 rounded-full shrink-0 mt-0.5"
                                       style={{ backgroundColor: done ? '#22c55e' : '#1a1a1a', border: done ? 'none' : '1px solid #333' }} />
-                                    <span className="text-sm truncate" style={{ color: done ? '#22c55e' : '#888' }}>
-                                      {ej.nombre}
-                                    </span>
+                                    <div className="min-w-0">
+                                      <span className="text-sm truncate block" style={{ color: done ? '#22c55e' : '#888' }}>
+                                        {ej.nombre}
+                                      </span>
+                                      {done && (registro?.peso_kg || registro?.reps_realizadas) && (
+                                        <span className="text-xs block" style={{ color: '#22c55e77' }}>
+                                          {[registro.peso_kg && `${registro.peso_kg} kg`, registro.reps_realizadas].filter(Boolean).join(' · ')}
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
-                                  <span className="text-xs shrink-0 ml-2" style={{ color: '#555' }}>
+                                  <span className="text-xs shrink-0" style={{ color: '#555' }}>
                                     {ej.series} × {ej.reps}
                                   </span>
                                 </div>

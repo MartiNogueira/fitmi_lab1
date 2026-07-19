@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { SocketProvider } from './context/SocketContext'
 import Home from './pages/Home'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -38,6 +39,7 @@ function ComingSoon({ title }) {
 export default function App() {
   return (
     <AuthProvider>
+      <SocketProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -66,6 +68,7 @@ export default function App() {
           <Route path="/comunidades/:id" element={<ComunidadDetalle />} />
         </Routes>
       </BrowserRouter>
+      </SocketProvider>
     </AuthProvider>
   )
 }
