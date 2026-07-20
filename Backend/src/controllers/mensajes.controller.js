@@ -1,4 +1,5 @@
 import prisma from '../db/prisma.js'
+import { getIO } from '../socket.js'
 
 export const getConversacion = async (req, res) => {
   const { userId } = req.params
@@ -36,6 +37,7 @@ export const enviarMensaje = async (req, res) => {
         contenido: contenido.trim(),
       },
     })
+    getIO()?.to(`user_${Number(userId)}`).emit('nuevo_mensaje', mensaje)
     res.status(201).json(mensaje)
   } catch (err) {
     console.error('enviarMensaje:', err)

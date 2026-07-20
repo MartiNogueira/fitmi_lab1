@@ -9,6 +9,8 @@ import {
   getCompletadasPlan,
   toggleComida,
   getResumenProgreso,
+  getProgresoMensual,
+  getHistorialFecha,
   enviarAvancePorEmail,
   enviarRecordatoriosInactividad,
   enviarRecordatorioProgreso,
@@ -19,6 +21,8 @@ const router = Router()
 router.use(authMiddleware)
 
 router.get('/resumen', getResumenProgreso)
+router.get('/mensual', getProgresoMensual)
+router.get('/historial/:fecha', getHistorialFecha)
 router.post('/enviar-avance-email', enviarAvancePorEmail)
 router.post('/recordatorio-progreso', enviarRecordatorioProgreso)
 router.post('/recordatorios-inactividad', adminMiddleware, enviarRecordatoriosInactividad)

@@ -186,6 +186,8 @@ const deleteMe = async (req, res) => {
 
       await tx.notificacion.deleteMany({ where: { destinatario_id: id } })
       await tx.emailLog.deleteMany({ where: { usuario_id: id } })
+      await tx.fotoProgreso.deleteMany({ where: { usuario_id: id } })
+      await tx.pesoCorporal.deleteMany({ where: { usuario_id: id } })
       await tx.mensaje.deleteMany({
         where: { OR: [{ remitente_id: id }, { destinatario_id: id }] },
       })

@@ -4,7 +4,7 @@ services:
     container_name: fitmi-postgres
     restart: always
     ports:
-      - "5432:5432"
+      - "5433:5432"
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin123
@@ -14,3 +14,5 @@ services:
 
 volumes:
   postgres_data:
+
+#npx prisma migrate dev --name init    ---> Sincronizar esquema de prisma con base de datos para que tenga las perras tablas

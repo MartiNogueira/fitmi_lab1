@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import authMiddleware from '../middleware/auth.middleware.js'
-import { getRutinas, createRutina, updateRutina, deleteRutina } from '../controllers/rutinas.controller.js'
+import { getRutinas, createRutina, updateRutina, deleteRutina, generarRutinaIA } from '../controllers/rutinas.controller.js'
 
 const router = Router()
 
@@ -8,6 +8,7 @@ router.use(authMiddleware)
 
 router.get('/', getRutinas)
 router.post('/', createRutina)
+router.post('/generar-ia', generarRutinaIA)
 router.put('/:id', updateRutina)
 router.delete('/:id', deleteRutina)
 

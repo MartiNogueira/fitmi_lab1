@@ -1,4 +1,87 @@
 import prisma from '../db/prisma.js'
+import { GoogleGenerativeAI } from '@google/generative-ai'
+
+const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null
+
+export const generarPlanIA = async (req, res) => {
+  if (req.user.rol !== 'cliente') {
+    return res.status(403).json({ error: 'Solo los clientes pueden generar planes con IA' })
+  }
+  if (!genAI) {
+    return res.status(503).json({ error: 'IA no configurada en el servidor' })
+  }
+
+  const { descripcion, tipo, objetivo, dias, restricciones } = req.body
+  if (!descripcion?.trim()) {
+    return res.status(400).json({ error: 'La descripción es requerida' })
+  }
+
+  const prompt = `Eres un nutricionista profesional. Genera un plan alimenticio personalizado en formato JSON.
+
+Descripción del usuario: "${descripcion}"
+Tipo de dieta: ${tipo || 'Equilibrada'}
+Objetivo: ${objetivo || 'Mantenimiento'}
+Días del plan: ${dias || 7}
+${restricciones ? `Restricciones o preferencias adicionales: ${restricciones}` : ''}
+
+Responde SOLO con JSON válido, sin texto adicional, sin markdown, sin bloques de código.
+El JSON debe seguir exactamente esta estructura:
+{
+  "nombre": "Nombre descriptivo del plan",
+  "objetivo": "Descripción del objetivo nutricional",
+  "dias": [
+    {
+      "dia": 1,
+      "nombre": "Lunes",
+      "comidas": [
+        {
+          "nombre": "Nombre de la comida",
+          "momento": "desayuno",
+          "descripcion": "Descripción con porciones y preparación"
+        }
+      ]
+    }
+  ]
+}
+
+Los valores de "momento" deben ser exactamente uno de: desayuno, almuerzo, merienda, cena, snack.
+Incluye entre 3 y 5 comidas por día. Genera exactamente ${dias || 7} días de plan.`
+
+  try {
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+    const result = await model.generateContent(prompt)
+    let text = result.response.text().trim()
+    text = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim()
+
+    const plan = JSON.parse(text)
+    if (!plan.nombre || !plan.dias || !Array.isArray(plan.dias)) {
+      return res.status(502).json({ error: 'La IA generó un formato inválido' })
+    }
+    res.json(plan)
+  } catch (err) {
+    console.error('generarPlanIA:', err)
+    res.status(502).json({ error: 'Error al generar el plan con IA' })
+  }
+}
+
+export const guardarPlanIA = async (req, res) => {
+  if (req.user.rol !== 'cliente') {
+    return res.status(403).json({ error: 'Solo los clientes pueden guardar planes generados con IA' })
+  }
+  const { nombre, objetivo, dias } = req.body
+  if (!nombre || !objetivo || !dias) {
+    return res.status(400).json({ error: 'Datos del plan incompletos' })
+  }
+  try {
+    const plan = await prisma.planAlimenticio.create({
+      data: { nombre, objetivo, dias, usuario_id: req.user.id, nutricionista_id: null },
+    })
+    res.status(201).json(plan)
+  } catch (err) {
+    console.error('guardarPlanIA:', err)
+    res.status(500).json({ error: 'Error al guardar el plan' })
+  }
+}
 
 const validatePlanDias = (dias) => {
   if (!Array.isArray(dias) || dias.length === 0) {

@@ -20,29 +20,31 @@ enum Estado {
 }
 
 model Usuario {
-  id_usuario            Int                   @id @default(autoincrement())
-  nombre_usuario        String
-  email                 String                @unique
-  contrasena            String
-  rol                   Rol                   @default(cliente)
-  estado                Estado                @default(aprobado)
-  created_at            DateTime              @default(now())
-  notificaciones        Notificacion[]        @relation("NotificacionDestinatario")
-  planesCreados         PlanAlimenticio[]     @relation("PlanesNutricionista")
-  rutinasCreadas        Rutina[]              @relation("RutinasEntrenador")
-  rutinaAsignada        Rutina[]              @relation("RutinaCliente")
-  planAsignado          PlanAlimenticio[]     @relation("PlanCliente")
-  ejerciciosCompletados EjercicioCompletado[]
-  comidasCompletadas    ComidaCompletada[]
-  vinculosComoUsuario   Vinculo[]             @relation("VinculosComoUsuario")
-  vinculosComoProfesional Vinculo[]           @relation("VinculosComoProfesional")
-  mensajesEnviados        Mensaje[]           @relation("MensajesEnviados")
-  mensajesRecibidos       Mensaje[]           @relation("MensajesRecibidos")
-  comunidadesCreadas      Comunidad[]         @relation("ComunidadesCreadas")
-  solicitudesComunidad    SolicitudComunidad[] @relation("SolicitudesComunidad")
-  postsComunidad          PostComunidad[]     @relation("PostsComunidadAutor")
+  id_usuario              Int                       @id @default(autoincrement())
+  nombre_usuario          String
+  email                   String                    @unique
+  contrasena              String
+  rol                     Rol                       @default(cliente)
+  estado                  Estado                    @default(aprobado)
+  created_at              DateTime                  @default(now())
+  notificaciones          Notificacion[]            @relation("NotificacionDestinatario")
+  planesCreados           PlanAlimenticio[]         @relation("PlanesNutricionista")
+  rutinasCreadas          Rutina[]                  @relation("RutinasEntrenador")
+  rutinaAsignada          Rutina[]                  @relation("RutinaCliente")
+  planAsignado            PlanAlimenticio[]         @relation("PlanCliente")
+  ejerciciosCompletados   EjercicioCompletado[]
+  comidasCompletadas      ComidaCompletada[]
+  pesosCorporales         PesoCorporal[]
+  vinculosComoUsuario     Vinculo[]                 @relation("VinculosComoUsuario")
+  vinculosComoProfesional Vinculo[]                 @relation("VinculosComoProfesional")
+  mensajesEnviados        Mensaje[]                 @relation("MensajesEnviados")
+  mensajesRecibidos       Mensaje[]                 @relation("MensajesRecibidos")
+  comunidadesCreadas      Comunidad[]               @relation("ComunidadesCreadas")
+  solicitudesComunidad    SolicitudComunidad[]      @relation("SolicitudesComunidad")
+  postsComunidad          PostComunidad[]           @relation("PostsComunidadAutor")
   likesComunidad          LikePostComunidad[]
   comentariosComunidad    ComentarioPostComunidad[] @relation("ComentariosComunidadAutor")
+  fotosProgreso           FotoProgreso[]
 }
 
 // tipo: "entrenador" | "nutricionista"
@@ -63,17 +65,17 @@ model Vinculo {
 // dias_semana: número de días de entrenamiento
 // ejercicios: [{dia: 1, nombre: "Día 1 - Pecho", ejercicios: [{nombre, series, reps, notas}]}]
 model Rutina {
-  id              Int                   @id @default(autoincrement())
-  nombre          String
-  objetivo        String
-  dias_semana     Int
-  ejercicios      Json
-  entrenador_id   Int
-  entrenador      Usuario               @relation("RutinasEntrenador", fields: [entrenador_id], references: [id_usuario])
-  usuario_id      Int?
-  usuario         Usuario?              @relation("RutinaCliente", fields: [usuario_id], references: [id_usuario])
-  completados     EjercicioCompletado[]
-  created_at      DateTime              @default(now())
+  id            Int                   @id @default(autoincrement())
+  nombre        String
+  objetivo      String
+  dias_semana   Int
+  ejercicios    Json
+  entrenador_id Int
+  entrenador    Usuario               @relation("RutinasEntrenador", fields: [entrenador_id], references: [id_usuario])
+  usuario_id    Int?
+  usuario       Usuario?              @relation("RutinaCliente", fields: [usuario_id], references: [id_usuario])
+  completados   EjercicioCompletado[]
+  created_at    DateTime              @default(now())
 }
 
 // dias: [{dia: 1, nombre: "Lunes", comidas: [{nombre, momento, descripcion}]}]
@@ -99,17 +101,32 @@ model EjercicioCompletado {
   dia_numero       Int
   ejercicio_nombre String
   fecha            DateTime @default(now())
+  peso_kg          Float?
+  reps_realizadas  String?
+  notas            String?
 }
 
 model ComidaCompletada {
-  id            Int             @id @default(autoincrement())
-  usuario_id    Int
-  usuario       Usuario         @relation(fields: [usuario_id], references: [id_usuario])
-  plan_id       Int
-  plan          PlanAlimenticio @relation(fields: [plan_id], references: [id])
-  dia_numero    Int
-  comida_nombre String
-  fecha         DateTime        @default(now())
+  id                    Int             @id @default(autoincrement())
+  usuario_id            Int
+  usuario               Usuario         @relation(fields: [usuario_id], references: [id_usuario])
+  plan_id               Int
+  plan                  PlanAlimenticio @relation(fields: [plan_id], references: [id])
+  dia_numero            Int
+  comida_nombre         String
+  fecha                 DateTime        @default(now())
+  estado                String          @default("completada")
+  gramos                Int?
+  descripcion_reemplazo String?
+}
+
+model PesoCorporal {
+  id         Int      @id @default(autoincrement())
+  usuario_id Int
+  usuario    Usuario  @relation(fields: [usuario_id], references: [id_usuario])
+  peso_kg    Float
+  fecha      DateTime @default(now())
+  created_at DateTime @default(now())
 }
 
 model Comunidad {
@@ -137,15 +154,15 @@ model SolicitudComunidad {
 }
 
 model PostComunidad {
-  id           Int       @id @default(autoincrement())
+  id           Int                       @id @default(autoincrement())
   comunidad_id Int
-  comunidad    Comunidad @relation(fields: [comunidad_id], references: [id], onDelete: Cascade)
+  comunidad    Comunidad                 @relation(fields: [comunidad_id], references: [id], onDelete: Cascade)
   autor_id     Int
-  autor        Usuario   @relation("PostsComunidadAutor", fields: [autor_id], references: [id_usuario], onDelete: Cascade)
+  autor        Usuario                   @relation("PostsComunidadAutor", fields: [autor_id], references: [id_usuario], onDelete: Cascade)
   contenido    String
   likes        LikePostComunidad[]
   comentarios  ComentarioPostComunidad[]
-  created_at   DateTime  @default(now())
+  created_at   DateTime                  @default(now())
 
   @@index([comunidad_id, created_at])
   @@index([autor_id])
@@ -185,6 +202,17 @@ model Mensaje {
   contenido       String
   leido           Boolean  @default(false)
   created_at      DateTime @default(now())
+}
+
+model FotoProgreso {
+  id          Int      @id @default(autoincrement())
+  usuario_id  Int
+  usuario     Usuario  @relation(fields: [usuario_id], references: [id_usuario])
+  url         String
+  public_id   String
+  descripcion String?
+  fecha       DateTime @default(now())
+  created_at  DateTime @default(now())
 }
 
 model Notificacion {

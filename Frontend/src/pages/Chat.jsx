@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useSocket } from '../context/SocketContext'
 import AppLayout from '../components/AppLayout'
 import { getConversacion, enviarMensaje } from '../api/auth'
 
@@ -8,6 +9,7 @@ export default function Chat() {
   const { userId } = useParams()
   const { state } = useLocation()
   const { user } = useAuth()
+  const socket = useSocket()
   const navigate = useNavigate()
 
   const [mensajes, setMensajes] = useState([])
@@ -17,17 +19,38 @@ export default function Chat() {
 
   const nombreOtro = state?.nombre ?? `Usuario ${userId}`
 
-  const cargar = () => {
+  // Carga inicial del historial (también marca los mensajes como leídos)
+  useEffect(() => {
+    setMensajes([])
     getConversacion(userId)
       .then(({ data }) => setMensajes(data))
       .catch(() => {})
-  }
-
-  useEffect(() => {
-    cargar()
-    const interval = setInterval(cargar, 3000)
-    return () => clearInterval(interval)
   }, [userId])
+
+  // Escucha mensajes nuevos en tiempo real
+  useEffect(() => {
+    if (!socket) return
+
+    const handleNuevoMensaje = (mensaje) => {
+      const otroId = Number(userId)
+      const esDeMiConversacion =
+        mensaje.remitente_id === otroId || mensaje.destinatario_id === otroId
+      if (!esDeMiConversacion) return
+
+      setMensajes(prev => {
+        if (prev.some(m => m.id === mensaje.id)) return prev
+        return [...prev, mensaje]
+      })
+
+      // Marcar como leído si el mensaje es del otro usuario
+      if (mensaje.remitente_id === otroId) {
+        socket.emit('mark_read', { fromUserId: otroId })
+      }
+    }
+
+    socket.on('nuevo_mensaje', handleNuevoMensaje)
+    return () => socket.off('nuevo_mensaje', handleNuevoMensaje)
+  }, [socket, userId])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
