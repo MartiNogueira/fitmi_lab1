@@ -41,6 +41,7 @@ export default function Progreso() {
   const [subiendo, setSubiendo] = useState(false)
   const [eliminando, setEliminando] = useState(null)
   const [fotoAmpliada, setFotoAmpliada] = useState(null)
+  const [fotoError, setFotoError] = useState('')
   const fileInputRef = useRef(null)
 
   useEffect(() => {
@@ -86,6 +87,7 @@ export default function Progreso() {
   const handleSubirFoto = async () => {
     if (!fotoSeleccionada) return
     setSubiendo(true)
+    setFotoError('')
     try {
       const fd = new FormData()
       fd.append('foto', fotoSeleccionada)
@@ -97,8 +99,11 @@ export default function Progreso() {
       setFotoDesc('')
       setFotoFecha(new Date().toISOString().slice(0, 10))
       if (fileInputRef.current) fileInputRef.current.value = ''
-    } catch {}
-    setSubiendo(false)
+    } catch (err) {
+      setFotoError(err.response?.data?.error || 'No se pudo subir la foto')
+    } finally {
+      setSubiendo(false)
+    }
   }
 
   const handleEliminar = async (id) => {
@@ -320,6 +325,11 @@ export default function Progreso() {
                   {subiendo ? 'Subiendo...' : 'Confirmar'}
                 </button>
               </div>
+              {fotoError && (
+                <p className="text-xs px-3 py-2 rounded-md" style={{ backgroundColor: '#1a0a0a', color: '#f87171', border: '1px solid #3a1010' }}>
+                  {fotoError}
+                </p>
+              )}
             </div>
           )}
 

@@ -31,6 +31,7 @@ initSocket(server)
 
 app.use(cors())
 app.use(express.json())
+app.use('/uploads', express.static(resolve(__dirname, '../uploads')))
 
 app.use('/api/auth', authRoutes)
 app.use('/api/notificaciones', notificacionesRoutes)

@@ -56,6 +56,7 @@ export default function App() {
           <Route path="/ejercicios" element={<PrivateRoute><Ejercicios /></PrivateRoute>} />
           <Route path="/progreso" element={<PrivateRoute><Progreso /></PrivateRoute>} />
           <Route path="/comunidad" element={<PrivateRoute><Comunidades /></PrivateRoute>} />
+          <Route path="/comunidades" element={<PrivateRoute><Comunidades /></PrivateRoute>} />
           <Route path="/mensajes" element={<PrivateRoute><Chat /></PrivateRoute>} />
           <Route path="/mi-entrenador" element={<PrivateRoute><MiEntrenador /></PrivateRoute>} />
           <Route path="/mi-nutricionista" element={<PrivateRoute><MiNutricionista /></PrivateRoute>} />

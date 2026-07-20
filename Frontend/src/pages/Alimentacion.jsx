@@ -122,7 +122,7 @@ export default function Alimentacion() {
               )}
             </div>
           </div>
-          {showIA && modalIA}
+          {showIA && renderModalIA()}
         </div>
       </AppLayout>
     )
@@ -135,7 +135,8 @@ export default function Alimentacion() {
   const completadasHoy = dia.comidas.filter(c => isCompletada(dia.dia, c.nombre)).length
   const totalHoy = dia.comidas.length
 
-  const modalIA = (
+  function renderModalIA() {
+    return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}>
       <div className="w-full max-w-lg rounded-2xl overflow-hidden" style={{ backgroundColor: '#0a0a0a', border: '1px solid #1a1a1a', maxHeight: '90vh', overflowY: 'auto' }}>
 
@@ -269,7 +270,8 @@ export default function Alimentacion() {
         )}
       </div>
     </div>
-  )
+    )
+  }
 
   return (
     <AppLayout>
@@ -376,7 +378,7 @@ export default function Alimentacion() {
           )}
         </div>
       </div>
-      {showIA && modalIA}
+      {showIA && renderModalIA()}
     </AppLayout>
   )
 }
