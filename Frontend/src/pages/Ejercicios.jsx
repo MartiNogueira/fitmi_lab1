@@ -542,6 +542,7 @@ function TabMiRutina() {
   const [toggling, setToggling] = useState(null)
   const [expandedKey, setExpandedKey] = useState(null)
   const [savingDetail, setSavingDetail] = useState(null)
+  const [error, setError] = useState('')
 
   const rutina = rutinas.find((item) => item.id === selectedRutinaId) ?? null
 
@@ -583,6 +584,7 @@ function TabMiRutina() {
     if (!rutina) return
     const key = `${dia_numero}-${ejercicio_nombre}`
     setToggling(key)
+    setError('')
     try {
       const { data } = await toggleEjercicio({ rutina_id: rutina.id, dia_numero, ejercicio_nombre })
       if (data.completado) {
@@ -594,7 +596,9 @@ function TabMiRutina() {
         setCompletados(prev => prev.filter(c => !(c.dia_numero === dia_numero && c.ejercicio_nombre === ejercicio_nombre)))
         if (expandedKey === key) setExpandedKey(null)
       }
-    } catch {}
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudo actualizar el progreso')
+    }
     setToggling(null)
   }
 
@@ -602,6 +606,7 @@ function TabMiRutina() {
     if (!rutina) return
     const key = `${dia_numero}-${ejercicio_nombre}`
     setSavingDetail(key)
+    setError('')
     try {
       const { data } = await toggleEjercicio({
         rutina_id: rutina.id,
@@ -618,7 +623,9 @@ function TabMiRutina() {
         })
       }
       setExpandedKey(null)
-    } catch {}
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudieron guardar los detalles')
+    }
     setSavingDetail(null)
   }
 
@@ -730,6 +737,12 @@ function TabMiRutina() {
           }} />
         </div>
       </div>
+
+      {error && (
+        <p className="mb-3 text-sm px-3 py-2 rounded-md" style={{ backgroundColor: '#1a0a0a', color: '#f87171', border: '1px solid #3a1010' }}>
+          {error}
+        </p>
+      )}
 
       {/* Lista de ejercicios */}
       <div className="flex flex-col gap-2">

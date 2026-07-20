@@ -1,8 +1,10 @@
 import dotenv from 'dotenv'
 import { dirname, resolve } from 'path'
 import { fileURLToPath } from 'url'
-import { PrismaClient } from '@prisma/client'
+import prismaClientPackage from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
+
+const { PrismaClient } = prismaClientPackage
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 dotenv.config({ path: resolve(__dirname, '../../.env') })

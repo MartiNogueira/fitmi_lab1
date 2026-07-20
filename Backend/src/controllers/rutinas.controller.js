@@ -23,6 +23,98 @@ const validateRutinaDias = (diasSemana, ejercicios) => {
   return null
 }
 
+const pickExercises = ({ tipo, nivel, equipamiento }) => {
+  const equipment = (equipamiento || '').toLowerCase()
+  const hasGym = equipment.includes('gimnasio')
+  const noEquipment = equipment.includes('sin')
+  const prefix = hasGym ? '' : noEquipment ? 'con peso corporal' : 'con mancuernas'
+
+  const catalog = {
+    fuerza: [
+      ['Sentadilla', 'Press de banca', 'Remo con barra', 'Peso muerto rumano', 'Press militar', 'Plancha'],
+      ['Zancadas', 'Dominadas asistidas', 'Hip thrust', 'Fondos en banco', 'Curl femoral', 'Elevaciones laterales'],
+      ['Prensa de piernas', 'Jalón al pecho', 'Press inclinado', 'Remo sentado', 'Curl de bíceps', 'Extensión de tríceps'],
+    ],
+    cardio: [
+      ['Trote suave', 'Jumping jacks', 'Mountain climbers', 'Burpees controlados', 'Bicicleta fija', 'Plancha dinámica'],
+      ['Caminata inclinada', 'Skipping', 'Sentadillas rápidas', 'Escaladores', 'Remo ergómetro', 'Abdominales bicicleta'],
+      ['Intervalos en cinta', 'Saltos laterales', 'Step ups', 'Soga', 'Elíptico', 'Plancha lateral'],
+    ],
+    hiit: [
+      ['Burpees', 'Sentadilla con salto', 'Mountain climbers', 'Flexiones', 'Zancadas alternas', 'Plancha con toque de hombro'],
+      ['Jumping jacks', 'Thrusters', 'Skipping alto', 'Remo rápido', 'Abdominales cortos', 'Sprint en cinta'],
+      ['Kettlebell swing', 'Saltos al cajón', 'Battle rope', 'Fondos', 'Russian twist', 'Plancha dinámica'],
+    ],
+    funcional: [
+      ['Peso muerto rumano', 'Sentadilla goblet', 'Remo unilateral', 'Press militar', 'Farmer walk', 'Plancha'],
+      ['Zancadas caminando', 'Step ups', 'Flexiones', 'Puente de glúteos', 'Face pull', 'Dead bug'],
+      ['Sentadilla frontal', 'Jalón al pecho', 'Fondos en banco', 'Hip thrust', 'Pallof press', 'Bird dog'],
+    ],
+    mixta: [
+      ['Sentadilla', 'Press de pecho', 'Remo', 'Peso muerto rumano', 'Bicicleta fija', 'Plancha'],
+      ['Zancadas', 'Jalón al pecho', 'Press militar', 'Hip thrust', 'Caminata inclinada', 'Abdominales bicicleta'],
+      ['Prensa', 'Flexiones', 'Remo sentado', 'Curl femoral', 'Elíptico', 'Plancha lateral'],
+    ],
+    flexibilidad: [
+      ['Movilidad de cadera', 'Estocada con rotación', 'Buenos días suaves', 'Apertura torácica', 'Plancha baja', 'Respiración diafragmática'],
+      ['Sentadilla profunda asistida', 'Puente de glúteos', 'Bird dog', 'Dead bug', 'Estiramiento de isquios', 'Movilidad de hombros'],
+      ['Yoga flow básico', 'Rotación lumbar', 'Movilidad de tobillo', 'Estiramiento de pecho', 'Plancha lateral', 'Caminata suave'],
+    ],
+  }
+
+  const key = (tipo || 'mixta').toLowerCase()
+  const selected = catalog[key] || catalog.mixta
+  const repsByLevel = {
+    principiante: ['10-12', '8-10', '30 seg'],
+    intermedio: ['10-12', '12-15', '40 seg'],
+    avanzado: ['8-10', '12-15', '45 seg'],
+  }
+  const seriesByLevel = {
+    principiante: '3',
+    intermedio: '4',
+    avanzado: '4',
+  }
+  const levelKey = (nivel || 'intermedio').toLowerCase()
+  return {
+    selected,
+    reps: repsByLevel[levelKey] || repsByLevel.intermedio,
+    series: seriesByLevel[levelKey] || '4',
+    suffix: prefix,
+  }
+}
+
+const buildRutinaLocal = ({ descripcion, tipo, nivel, dias_semana, equipamiento }) => {
+  const dias = Math.min(Math.max(Number(dias_semana) || 3, 2), 6)
+  const normalizedTipo = tipo || 'Mixta'
+  const normalizedNivel = nivel || 'Intermedio'
+  const { selected, reps, series, suffix } = pickExercises({ tipo: normalizedTipo, nivel: normalizedNivel, equipamiento })
+
+  const ejercicios = Array.from({ length: dias }, (_, index) => {
+    const base = selected[index % selected.length]
+    return {
+      dia: index + 1,
+      nombre: `Día ${index + 1} - ${index % 2 === 0 ? 'Trabajo principal' : 'Complementario'}`,
+      ejercicios: base.map((nombre, exerciseIndex) => ({
+        nombre: suffix && !nombre.toLowerCase().includes('caminata') && !nombre.toLowerCase().includes('trote')
+          ? `${nombre} ${suffix}`
+          : nombre,
+        series: exerciseIndex >= base.length - 2 ? '3' : series,
+        reps: reps[exerciseIndex % reps.length],
+        notas: exerciseIndex === 0 && descripcion?.trim()
+          ? `Adaptado al objetivo: ${descripcion.trim().slice(0, 90)}`
+          : '',
+      })),
+    }
+  })
+
+  return {
+    nombre: `Rutina ${normalizedTipo} ${normalizedNivel}`,
+    objetivo: descripcion?.trim() || `Mejorar ${normalizedTipo.toLowerCase()} con nivel ${normalizedNivel.toLowerCase()}`,
+    dias_semana: dias,
+    ejercicios,
+  }
+}
+
 export const getRutinas = async (req, res) => {
   try {
     const rutinas = await prisma.rutina.findMany({
@@ -129,12 +221,13 @@ export const generarRutinaIA = async (req, res) => {
   if (req.user.rol !== 'cliente') {
     return res.status(403).json({ error: 'Solo los clientes pueden generar rutinas con IA' })
   }
-  if (!genAI) {
-    return res.status(503).json({ error: 'El servicio de IA no está configurado. Contactá al administrador.' })
-  }
 
   const { descripcion, tipo, nivel, dias_semana, equipamiento } = req.body
   const dias = Math.min(Math.max(Number(dias_semana) || 3, 2), 6)
+
+  if (!genAI) {
+    return res.json(buildRutinaLocal({ descripcion, tipo, nivel, dias_semana: dias, equipamiento }))
+  }
 
   const prompt = `Sos un entrenador personal experto. Generá una rutina de ejercicios personalizada.
 
@@ -194,9 +287,6 @@ Reglas:
     })
   } catch (err) {
     console.error('generarRutinaIA:', err)
-    if (err.message?.includes('API_KEY') || err.message?.includes('credentials')) {
-      return res.status(503).json({ error: 'API key de Gemini inválida. Contactá al administrador.' })
-    }
-    res.status(500).json({ error: 'Error al generar la rutina. Intentá de nuevo.' })
+    res.json(buildRutinaLocal({ descripcion, tipo, nivel, dias_semana: dias, equipamiento }))
   }
 }
