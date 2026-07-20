@@ -91,6 +91,12 @@ Users connect to professionals (entrenador/nutricionista) via the `Vinculo` mode
 
 `Notificacion` model used for system events (vinculo requests, approvals, etc.). Frontend polls via `NotificationBell` component.
 
+### Email system
+
+Mail delivery uses Nodemailer with SMTP configuration from `Backend/.env`. Automatic progress reports and inactivity reminders are implemented in `Backend/src/services/progress-mail.service.js`; delivery logs are stored in `EmailLog` to avoid duplicate automatic sends during the same day.
+
+See `MAILS.md` for the detailed behavior, configuration, recipients, frequencies, and testing steps.
+
 ### Messaging
 
 Direct 1-to-1 chat between users. `InboxChat` lists conversations; `Chat` page shows a thread by `userId`.

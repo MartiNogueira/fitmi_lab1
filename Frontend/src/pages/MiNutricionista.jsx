@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AppLayout from '../components/AppLayout'
-import { getProfesionales, solicitarVinculo } from '../api/auth'
+import { desvincularVinculo, getApiErrorMessage, getProfesionales, solicitarVinculo } from '../api/auth'
 
 function initials(name) {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
@@ -12,6 +12,7 @@ export default function MiNutricionista() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [solicitando, setSolicitando] = useState(null)
+  const [desvinculando, setDesvinculando] = useState(null)
   const [error, setError] = useState('')
   const navigate = useNavigate()
 
@@ -37,6 +38,28 @@ export default function MiNutricionista() {
       setError(err?.response?.data?.error ?? 'Error al enviar solicitud')
     } finally {
       setSolicitando(null)
+    }
+  }
+
+  const handleDesvincular = async (profesional) => {
+    if (!profesional.vinculo_id) return
+    const confirmed = window.confirm(`¿Querés desvincularte de ${profesional.nombre_usuario}?`)
+    if (!confirmed) return
+
+    setDesvinculando(profesional.vinculo_id)
+    setError('')
+    try {
+      await desvincularVinculo(profesional.vinculo_id)
+      setProfesionales(prev =>
+        prev.map(p => p.id_usuario === profesional.id_usuario
+          ? { ...p, estado_vinculo: null, vinculo_id: null }
+          : p
+        )
+      )
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Error al desvincularte'))
+    } finally {
+      setDesvinculando(null)
     }
   }
 
@@ -96,7 +119,7 @@ export default function MiNutricionista() {
                   </div>
 
                   {estado === 'activo' && (
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                       <span className="text-xs px-3 py-1 rounded-full"
                         style={{ backgroundColor: '#0a1a0a', color: '#22c55e', border: '1px solid #22c55e44' }}>
                         Vinculado ✓
@@ -109,6 +132,13 @@ export default function MiNutricionista() {
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                         </svg>
+                      </button>
+                      <button
+                        onClick={() => handleDesvincular(p)}
+                        disabled={desvinculando === p.vinculo_id}
+                        className="text-xs px-3 py-1.5 rounded-md font-semibold shrink-0 transition-opacity hover:opacity-80"
+                        style={{ backgroundColor: '#ef4444', color: '#fff', opacity: desvinculando === p.vinculo_id ? 0.6 : 1 }}>
+                        {desvinculando === p.vinculo_id ? '...' : 'Desvincularme'}
                       </button>
                     </div>
                   )}

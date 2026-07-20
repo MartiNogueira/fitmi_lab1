@@ -160,8 +160,100 @@ const updateMe = async (req, res) => {
 const deleteMe = async (req, res) => {
   const id = req.user.id
   try {
-    await prisma.notificacion.deleteMany({ where: { destinatario_id: id } })
-    await prisma.usuario.delete({ where: { id_usuario: id } })
+    await prisma.$transaction(async (tx) => {
+      const [rutinasCreadas, planesCreados, comunidadesCreadas, postsPropios] = await Promise.all([
+        tx.rutina.findMany({ where: { entrenador_id: id }, select: { id: true } }),
+        tx.planAlimenticio.findMany({ where: { nutricionista_id: id }, select: { id: true } }),
+        tx.comunidad.findMany({ where: { creador_id: id }, select: { id: true } }),
+        tx.postComunidad.findMany({ where: { autor_id: id }, select: { id: true } }),
+      ])
+
+      const rutinaIds = rutinasCreadas.map((rutina) => rutina.id)
+      const planIds = planesCreados.map((plan) => plan.id)
+      const comunidadIds = comunidadesCreadas.map((comunidad) => comunidad.id)
+
+      const postsDeComunidades = comunidadIds.length > 0
+        ? await tx.postComunidad.findMany({
+            where: { comunidad_id: { in: comunidadIds } },
+            select: { id: true },
+          })
+        : []
+
+      const postIds = [...new Set([
+        ...postsPropios.map((post) => post.id),
+        ...postsDeComunidades.map((post) => post.id),
+      ])]
+
+      await tx.notificacion.deleteMany({ where: { destinatario_id: id } })
+      await tx.emailLog.deleteMany({ where: { usuario_id: id } })
+      await tx.mensaje.deleteMany({
+        where: { OR: [{ remitente_id: id }, { destinatario_id: id }] },
+      })
+      await tx.vinculo.deleteMany({
+        where: { OR: [{ usuario_id: id }, { profesional_id: id }] },
+      })
+
+      await tx.ejercicioCompletado.deleteMany({
+        where: {
+          OR: [
+            { usuario_id: id },
+            ...(rutinaIds.length > 0 ? [{ rutina_id: { in: rutinaIds } }] : []),
+          ],
+        },
+      })
+      await tx.comidaCompletada.deleteMany({
+        where: {
+          OR: [
+            { usuario_id: id },
+            ...(planIds.length > 0 ? [{ plan_id: { in: planIds } }] : []),
+          ],
+        },
+      })
+
+      await tx.rutina.updateMany({ where: { usuario_id: id }, data: { usuario_id: null } })
+      await tx.planAlimenticio.updateMany({ where: { usuario_id: id }, data: { usuario_id: null } })
+
+      if (rutinaIds.length > 0) {
+        await tx.rutina.deleteMany({ where: { id: { in: rutinaIds } } })
+      }
+      if (planIds.length > 0) {
+        await tx.planAlimenticio.deleteMany({ where: { id: { in: planIds } } })
+      }
+
+      await tx.solicitudComunidad.deleteMany({
+        where: {
+          OR: [
+            { usuario_id: id },
+            ...(comunidadIds.length > 0 ? [{ comunidad_id: { in: comunidadIds } }] : []),
+          ],
+        },
+      })
+
+      await tx.likePostComunidad.deleteMany({
+        where: {
+          OR: [
+            { usuario_id: id },
+            ...(postIds.length > 0 ? [{ post_id: { in: postIds } }] : []),
+          ],
+        },
+      })
+      await tx.comentarioPostComunidad.deleteMany({
+        where: {
+          OR: [
+            { autor_id: id },
+            ...(postIds.length > 0 ? [{ post_id: { in: postIds } }] : []),
+          ],
+        },
+      })
+      if (postIds.length > 0) {
+        await tx.postComunidad.deleteMany({ where: { id: { in: postIds } } })
+      }
+      if (comunidadIds.length > 0) {
+        await tx.comunidad.deleteMany({ where: { id: { in: comunidadIds } } })
+      }
+
+      await tx.usuario.delete({ where: { id_usuario: id } })
+    })
     res.json({ message: 'Cuenta eliminada' })
   } catch (err) {
     console.error('Error en deleteMe:', err)

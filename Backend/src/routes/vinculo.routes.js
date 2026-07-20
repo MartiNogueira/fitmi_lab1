@@ -3,6 +3,7 @@ import authMiddleware from '../middleware/auth.middleware.js'
 import {
   getProfesionales,
   solicitarVinculo,
+  desvincularMiVinculo,
   getSolicitudes,
   responderSolicitud,
   getMisClientes,
@@ -17,6 +18,8 @@ router.use(authMiddleware)
 router.get('/profesionales', getProfesionales)         // ?tipo=entrenador|nutricionista
 router.post('/solicitar', solicitarVinculo)
 router.get('/mi-vinculo', getMiVinculo)                // ?tipo=entrenador|nutricionista
+router.post('/:id/desvincular', desvincularMiVinculo)
+router.delete('/:id', desvincularMiVinculo)
 
 // Profesional
 router.get('/solicitudes', getSolicitudes)

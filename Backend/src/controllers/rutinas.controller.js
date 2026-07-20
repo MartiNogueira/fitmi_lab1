@@ -1,5 +1,23 @@
 import prisma from '../db/prisma.js'
 
+const validateRutinaDias = (diasSemana, ejercicios) => {
+  const totalDias = Number(diasSemana)
+  if (!Number.isInteger(totalDias) || totalDias < 1) {
+    return 'La cantidad de días debe ser mayor a 0'
+  }
+  if (!Array.isArray(ejercicios) || ejercicios.length === 0) {
+    return 'La rutina debe tener al menos un día con ejercicios'
+  }
+  if (ejercicios.length !== totalDias) {
+    return 'La cantidad de días no coincide con los ejercicios cargados'
+  }
+  const diaVacio = ejercicios.find((dia) => !Array.isArray(dia.ejercicios) || dia.ejercicios.length === 0)
+  if (diaVacio) {
+    return 'No se puede crear una rutina con días sin ejercicios'
+  }
+  return null
+}
+
 export const getRutinas = async (req, res) => {
   try {
     const rutinas = await prisma.rutina.findMany({
@@ -20,6 +38,10 @@ export const createRutina = async (req, res) => {
   const { nombre, objetivo, dias_semana, ejercicios, usuario_email } = req.body
   if (!nombre || !objetivo || !dias_semana || !ejercicios) {
     return res.status(400).json({ error: 'Nombre, objetivo, días y ejercicios son requeridos' })
+  }
+  const validationError = validateRutinaDias(dias_semana, ejercicios)
+  if (validationError) {
+    return res.status(400).json({ error: validationError })
   }
   try {
     let usuario_id = req.user.rol === 'cliente' ? req.user.id : null
@@ -50,6 +72,10 @@ export const createRutina = async (req, res) => {
 export const updateRutina = async (req, res) => {
   const { id } = req.params
   const { nombre, objetivo, dias_semana, ejercicios, usuario_email } = req.body
+  const validationError = validateRutinaDias(dias_semana, ejercicios)
+  if (validationError) {
+    return res.status(400).json({ error: validationError })
+  }
   try {
     const existing = await prisma.rutina.findUnique({ where: { id: Number(id) } })
     if (!existing || existing.entrenador_id !== req.user.id) {

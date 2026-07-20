@@ -47,9 +47,12 @@ export const getComunidades = async (req, res) => {
         where: search ? { nombre: { contains: search, mode: 'insensitive' } } : {},
         include: {
           creador: { select: { id_usuario: true, nombre_usuario: true } },
+          miembros: {
+            where: { estado: 'aceptado' },
+            select: { usuario_id: true },
+          },
           _count: {
             select: {
-              miembros: { where: { estado: 'aceptado' } },
               posts: true,
             },
           },
@@ -68,7 +71,7 @@ export const getComunidades = async (req, res) => {
         privada: c.privada,
         creador_id: c.creador_id,
         creador: c.creador,
-        miembros_count: c._count.miembros,
+        miembros_count: c.miembros.filter((miembro) => miembro.usuario_id !== c.creador_id).length,
         posts_count: c._count.posts,
         created_at: c.created_at,
         estado_solicitud: sol?.estado ?? null,

@@ -1,5 +1,16 @@
 import prisma from '../db/prisma.js'
 
+const validatePlanDias = (dias) => {
+  if (!Array.isArray(dias) || dias.length === 0) {
+    return 'El plan debe tener al menos un día con comidas'
+  }
+  const diaVacio = dias.find((dia) => !Array.isArray(dia.comidas) || dia.comidas.length === 0)
+  if (diaVacio) {
+    return 'No se puede crear un plan con días sin comidas'
+  }
+  return null
+}
+
 export const getPlanes = async (req, res) => {
   try {
     const planes = await prisma.planAlimenticio.findMany({
@@ -18,6 +29,10 @@ export const createPlan = async (req, res) => {
   const { nombre, objetivo, dias, usuario_email } = req.body
   if (!nombre || !objetivo || !dias) {
     return res.status(400).json({ error: 'Nombre, objetivo y días son requeridos' })
+  }
+  const validationError = validatePlanDias(dias)
+  if (validationError) {
+    return res.status(400).json({ error: validationError })
   }
   try {
     let usuario_id = null
@@ -47,6 +62,10 @@ export const createPlan = async (req, res) => {
 export const updatePlan = async (req, res) => {
   const { id } = req.params
   const { nombre, objetivo, dias, usuario_email } = req.body
+  const validationError = validatePlanDias(dias)
+  if (validationError) {
+    return res.status(400).json({ error: validationError })
+  }
   try {
     const existing = await prisma.planAlimenticio.findUnique({ where: { id: Number(id) } })
     if (!existing || existing.nutricionista_id !== req.user.id) {

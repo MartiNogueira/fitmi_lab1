@@ -3,6 +3,7 @@ import {
   sendInactivityReminders,
   sendProgressReportToProfessionals,
 } from '../services/progress-mail.service.js'
+import { sendMail } from '../services/mail.service.js'
 
 function hoyRango() {
   const hoy = new Date()
@@ -11,6 +12,14 @@ function hoyRango() {
   manana.setDate(manana.getDate() + 1)
   return { hoy, manana }
 }
+
+const escapeHtml = (value) =>
+  String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
 
 // ── Rutina del usuario ────────────────────────────────────────────────────────
 
@@ -334,25 +343,46 @@ export const enviarRecordatorioProgreso = async (req, res) => {
     if (!vinculo) {
       return res.status(404).json({ error: 'Alumno no encontrado o no vinculado' })
     }
+    if (!vinculo.usuario.email) {
+      return res.status(400).json({ error: 'El alumno no tiene email configurado' })
+    }
 
-    const notificacion = await prisma.notificacion.create({
+    const subject = 'Recordatorio para cargar tu progreso en Fitmi'
+    const text = [
+      `Hola ${vinculo.usuario.nombre_usuario},`,
+      '',
+      `${vinculo.profesional.nombre_usuario} te recuerda que cargues tu progreso en Fitmi.`,
+      'Registrá tus entrenamientos o comidas para que pueda hacer seguimiento de tu evolución.',
+      '',
+      'Fitmi',
+    ].join('\n')
+    const html = [
+      `<p>Hola ${escapeHtml(vinculo.usuario.nombre_usuario)},</p>`,
+      `<p><strong>${escapeHtml(vinculo.profesional.nombre_usuario)}</strong> te recuerda que cargues tu progreso en Fitmi.</p>`,
+      '<p>Registrá tus entrenamientos o comidas para que pueda hacer seguimiento de tu evolución.</p>',
+      '<p>Fitmi</p>',
+    ].join('\n')
+    const delivery = await sendMail({
+      to: vinculo.usuario.email,
+      subject,
+      text,
+      html,
+    })
+
+    await prisma.emailLog.create({
       data: {
-        destinatario_id: usuarioId,
         tipo: 'recordatorio_progreso',
-        mensaje: `${vinculo.profesional.nombre_usuario} te recuerda que envíes tu progreso.`,
-        data: {
-          profesional_id: vinculo.profesional.id_usuario,
-          profesional_nombre: vinculo.profesional.nombre_usuario,
-          profesional_rol: vinculo.profesional.rol,
-          usuario_id: vinculo.usuario.id_usuario,
-          usuario_nombre: vinculo.usuario.nombre_usuario,
-        },
+        usuario_id: vinculo.usuario.id_usuario,
+        destinatario: vinculo.usuario.email,
+        asunto: subject,
       },
     })
 
     res.status(201).json({
-      message: `Recordatorio enviado a ${vinculo.usuario.nombre_usuario}`,
-      notificacion,
+      message: delivery.dev
+        ? `Recordatorio generado en modo desarrollo para ${vinculo.usuario.nombre_usuario}. Configurá SMTP para enviarlo por mail.`
+        : `Recordatorio enviado por mail a ${vinculo.usuario.nombre_usuario}`,
+      devMode: Boolean(delivery.dev),
     })
   } catch (err) {
     console.error('enviarRecordatorioProgreso:', err)

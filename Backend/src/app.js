@@ -17,7 +17,9 @@ import progresoRoutes from './routes/progreso.routes.js'
 import vinculoRoutes from './routes/vinculo.routes.js'
 import mensajesRoutes from './routes/mensajes.routes.js'
 import comunidadesRoutes from './routes/comunidades.routes.js'
-import { startActivityReminderJob } from './services/progress-mail.service.js'
+import { startActivityReminderJob, startProgressReportJob } from './services/progress-mail.service.js'
+import authMiddleware from './middleware/auth.middleware.js'
+import { desvincularMiVinculo } from './controllers/vinculo.controller.js'
 
 const app = express()
 
@@ -31,11 +33,15 @@ app.use('/api/planes', planesRoutes)
 app.use('/api/rutinas', rutinasRoutes)
 app.use('/api/progreso', progresoRoutes)
 app.use('/api/vinculos', vinculoRoutes)
+app.post('/api/vinculos/:id/desvincular', authMiddleware, desvincularMiVinculo)
 app.use('/api/mensajes', mensajesRoutes)
 app.use('/api/comunidades', comunidadesRoutes)
 
 const PORT = process.env.PORT || 3000
-app.listen(PORT, () => {
-  console.log(`Fitmi server corriendo en puerto ${PORT}`)
+const HOST = process.env.HOST || '127.0.0.1'
+app.listen(PORT, HOST, () => {
+  console.log(`Fitmi server corriendo en http://${HOST}:${PORT}`)
+  console.log('Ruta activa: POST /api/vinculos/:id/desvincular')
   startActivityReminderJob()
+  startProgressReportJob()
 })

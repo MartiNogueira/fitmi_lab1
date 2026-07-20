@@ -38,15 +38,6 @@ const listHtml = (items, mapper, emptyText) => {
   return `<ul>${items.map((item) => `<li>${mapper(item)}</li>`).join('')}</ul>`
 }
 
-const countRutinaEjercicios = (rutina) =>
-  (rutina?.ejercicios || []).reduce((total, dia) => total + (dia.ejercicios?.length || 0), 0)
-
-const countPlanComidas = (plan) =>
-  (plan?.dias || []).reduce((total, dia) => total + (dia.comidas?.length || 0), 0)
-
-const percent = (completed, total) =>
-  total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0
-
 export const buildProgressSummary = async (usuarioId, days = DEFAULT_REPORT_DAYS) => {
   const since = daysAgo(days)
   const user = await prisma.usuario.findUnique({
@@ -173,48 +164,19 @@ export const sendProgressReportToProfessionals = async (usuarioId, days = DEFAUL
   }
 
   const recipients = []
+  let devMode = false
   for (const { tipo, profesional } of activeProfessionals) {
     const email = buildProgressEmail(summary, tipo)
-    const ejercicios = tipo === 'entrenador' ? summary.ejercicios : []
-    const comidas = tipo === 'nutricionista' ? summary.comidas : []
-    const ejerciciosObjetivo = tipo === 'entrenador' ? countRutinaEjercicios(summary.rutinaAsignada) : 0
-    const comidasObjetivo = tipo === 'nutricionista' ? countPlanComidas(summary.planAsignado) : 0
-    const avancePorcentaje = tipo === 'entrenador'
-      ? percent(ejercicios.length, ejerciciosObjetivo)
-      : percent(comidas.length, comidasObjetivo)
-
-    await prisma.notificacion.create({
-      data: {
-        destinatario_id: profesional.id_usuario,
-        tipo: 'reporte_avance',
-        mensaje: `${summary.user.nombre_usuario} compartió sus avances de los últimos ${days} días.`,
-        data: {
-          usuario_id: summary.user.id_usuario,
-          usuario_nombre: summary.user.nombre_usuario,
-          usuario_email: summary.user.email,
-          dias: days,
-          tipo_profesional: tipo,
-          avance_porcentaje: avancePorcentaje,
-          ejercicios_total: ejercicios.length,
-          ejercicios_objetivo: ejerciciosObjetivo,
-          comidas_total: comidas.length,
-          comidas_objetivo: comidasObjetivo,
-          ejercicios: ejercicios.slice(0, 20).map((item) => ({
-            nombre: item.ejercicio_nombre,
-            rutina: item.rutina?.nombre || 'Rutina',
-            fecha: item.fecha,
-          })),
-          comidas: comidas.slice(0, 20).map((item) => ({
-            nombre: item.comida_nombre,
-            plan: item.plan?.nombre || 'Plan',
-            fecha: item.fecha,
-          })),
-        },
-      },
+    const delivery = await sendMail({
+      to: profesional.email,
+      subject: email.subject,
+      text: email.text,
+      html: email.html,
     })
+    if (delivery.dev) devMode = true
     await prisma.emailLog.create({
       data: {
-        tipo: 'reporte_avance_interno',
+        tipo: 'reporte_avance',
         usuario_id: summary.user.id_usuario,
         destinatario: profesional.email,
         asunto: email.subject,
@@ -223,7 +185,53 @@ export const sendProgressReportToProfessionals = async (usuarioId, days = DEFAUL
     recipients.push({ id: profesional.id_usuario, email: profesional.email, tipo })
   }
 
-  return { sent: recipients.length, recipients, internal: true }
+  return { sent: recipients.length, recipients, devMode }
+}
+
+export const sendAutomaticProgressReports = async (days = DEFAULT_REPORT_DAYS) => {
+  const today = startOfToday()
+  const vinculos = await prisma.vinculo.findMany({
+    where: {
+      estado: 'activo',
+      usuario: { rol: 'cliente', estado: 'aprobado' },
+      profesional: { email: { not: '' } },
+    },
+    select: { usuario_id: true },
+    distinct: ['usuario_id'],
+  })
+
+  const results = []
+  let sent = 0
+  let devMode = false
+
+  for (const vinculo of vinculos) {
+    const alreadySentToday = await prisma.emailLog.findFirst({
+      where: {
+        tipo: 'reporte_avance_auto',
+        usuario_id: vinculo.usuario_id,
+        created_at: { gte: today },
+      },
+    })
+    if (alreadySentToday) continue
+
+    const result = await sendProgressReportToProfessionals(vinculo.usuario_id, days)
+    if (result.devMode) devMode = true
+    sent += result.sent
+    results.push({ usuario_id: vinculo.usuario_id, ...result })
+
+    if (result.sent > 0) {
+      await prisma.emailLog.create({
+        data: {
+          tipo: 'reporte_avance_auto',
+          usuario_id: vinculo.usuario_id,
+          destinatario: result.recipients.map((recipient) => recipient.email).join(', '),
+          asunto: `Reporte automático de avance (${days} días)`,
+        },
+      })
+    }
+  }
+
+  return { sent, users: results.length, results, devMode }
 }
 
 const getLastActivityDate = async (usuarioId) => {
@@ -331,5 +339,23 @@ export const startActivityReminderJob = () => {
   }
 
   setTimeout(run, 10_000)
+  setInterval(run, intervalHours * 60 * 60 * 1000)
+}
+
+export const startProgressReportJob = () => {
+  if (process.env.ENABLE_PROGRESS_REPORTS !== 'true') return
+
+  const days = Number(process.env.PROGRESS_REPORT_DAYS || DEFAULT_REPORT_DAYS)
+  const intervalHours = Number(process.env.PROGRESS_REPORT_INTERVAL_HOURS || 24)
+  const run = async () => {
+    try {
+      const result = await sendAutomaticProgressReports(days)
+      console.log(`[reportes de avance] enviados: ${result.sent}`)
+    } catch (err) {
+      console.error('[reportes de avance] error:', err)
+    }
+  }
+
+  setTimeout(run, 20_000)
   setInterval(run, intervalHours * 60 * 60 * 1000)
 }

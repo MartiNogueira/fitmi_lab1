@@ -5,6 +5,9 @@ import prisma from '../db/prisma.js'
 export const getProfesionales = async (req, res) => {
   const { tipo } = req.query // "entrenador" | "nutricionista"
   if (!tipo) return res.status(400).json({ error: 'Tipo requerido' })
+  if (req.user.rol !== 'cliente') {
+    return res.status(403).json({ error: 'Solo los clientes pueden buscar profesionales' })
+  }
   try {
     const profesionales = await prisma.usuario.findMany({
       where: { rol: tipo, estado: 'aprobado', NOT: { id_usuario: req.user.id } },
@@ -31,6 +34,9 @@ export const getProfesionales = async (req, res) => {
 export const solicitarVinculo = async (req, res) => {
   const { profesional_id, tipo } = req.body
   if (!profesional_id || !tipo) return res.status(400).json({ error: 'Faltan campos' })
+  if (req.user.rol !== 'cliente') {
+    return res.status(403).json({ error: 'Solo los clientes pueden solicitar vínculos con profesionales' })
+  }
   if (Number(profesional_id) === req.user.id) {
     return res.status(400).json({ error: 'No podés vincularte con vos mismo' })
   }
@@ -42,7 +48,7 @@ export const solicitarVinculo = async (req, res) => {
       return res.status(400).json({ error: `Ya tenés un vínculo ${vinculoExistente.estado === 'activo' ? 'activo' : 'pendiente'} con un ${tipo}` })
     }
     const profesional = await prisma.usuario.findUnique({ where: { id_usuario: Number(profesional_id) } })
-    if (!profesional || profesional.rol !== tipo) {
+    if (!profesional || profesional.rol !== tipo || profesional.estado !== 'aprobado') {
       return res.status(404).json({ error: 'Profesional no encontrado' })
     }
     const existente = await prisma.vinculo.findUnique({
@@ -58,6 +64,41 @@ export const solicitarVinculo = async (req, res) => {
   } catch (err) {
     console.error('solicitarVinculo:', err)
     res.status(500).json({ error: 'Error al enviar solicitud', detail: err.message })
+  }
+}
+
+// ── Para el usuario: desvincularse de un profesional ─────────────────────────
+
+export const desvincularMiVinculo = async (req, res) => {
+  const { id } = req.params
+  const vinculoId = Number(id)
+  if (!Number.isInteger(vinculoId)) {
+    return res.status(400).json({ error: 'Vínculo inválido' })
+  }
+
+  try {
+    const vinculo = await prisma.vinculo.findUnique({
+      where: { id: vinculoId },
+      include: { profesional: { select: { id_usuario: true, nombre_usuario: true, email: true, rol: true } } },
+    })
+
+    if (!vinculo || vinculo.usuario_id !== req.user.id) {
+      return res.status(404).json({ error: 'Vínculo no encontrado' })
+    }
+
+    if (!['activo', 'pendiente'].includes(vinculo.estado)) {
+      return res.status(400).json({ error: 'Solo podés desvincular vínculos activos o pendientes' })
+    }
+
+    await prisma.vinculo.delete({ where: { id: vinculoId } })
+    res.json({
+      message: `Te desvinculaste de ${vinculo.profesional.nombre_usuario}`,
+      profesional: vinculo.profesional,
+      tipo: vinculo.tipo,
+    })
+  } catch (err) {
+    console.error('desvincularMiVinculo:', err)
+    res.status(500).json({ error: 'Error al desvincularte', detail: err.message })
   }
 }
 

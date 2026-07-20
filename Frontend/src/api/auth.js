@@ -14,10 +14,15 @@ api.interceptors.request.use((config) => {
 
 export const getApiErrorMessage = (err, fallback = 'Ocurrió un error') => {
   if (err.response?.data?.error) return err.response.data.error
+  if (err.response?.data?.message) return err.response.data.message
+  if (err.response?.data?.detail) return err.response.data.detail
+  if (typeof err.response?.data === 'string' && err.response.data.trim()) {
+    return err.response.data
+  }
   if (err.code === 'ERR_NETWORK' || !err.response) {
     return 'No se pudo conectar con el servidor. Verificá que el backend esté corriendo.'
   }
-  return fallback
+  return `${fallback} (${err.response.status})`
 }
 
 export const register = (name, email, password) =>
@@ -86,6 +91,9 @@ export const getProfesionales = (tipo) =>
 
 export const solicitarVinculo = (profesional_id, tipo) =>
   api.post('/vinculos/solicitar', { profesional_id, tipo })
+
+export const desvincularVinculo = (id) =>
+  api.post(`/vinculos/${id}/desvincular`)
 
 export const getMiVinculo = (tipo) =>
   api.get('/vinculos/mi-vinculo', { params: { tipo } })

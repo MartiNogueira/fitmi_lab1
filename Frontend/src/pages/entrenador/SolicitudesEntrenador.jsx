@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import AppLayout from '../../components/AppLayout'
-import { getSolicitudesVinculo, responderSolicitud } from '../../api/auth'
+import { getApiErrorMessage, getSolicitudesVinculo, responderSolicitud } from '../../api/auth'
 
 function initials(name) {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
@@ -11,11 +11,12 @@ export default function SolicitudesEntrenador() {
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState(null)
   const [respondiendo, setRespondiendo] = useState(null)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     getSolicitudesVinculo()
       .then(({ data }) => setSolicitudes(data))
-      .catch(() => {})
+      .catch((err) => setError(getApiErrorMessage(err, 'No se pudieron cargar las solicitudes')))
       .finally(() => setLoading(false))
   }, [])
 
@@ -25,7 +26,9 @@ export default function SolicitudesEntrenador() {
       await responderSolicitud(id, accion)
       setSolicitudes(prev => prev.filter(s => s.id !== id))
       setExpanded(null)
-    } catch {}
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'No se pudo responder la solicitud'))
+    }
     setRespondiendo(null)
   }
 
@@ -38,6 +41,13 @@ export default function SolicitudesEntrenador() {
             {loading ? '...' : `${solicitudes.length} solicitud${solicitudes.length !== 1 ? 'es' : ''} pendiente${solicitudes.length !== 1 ? 's' : ''}`}
           </p>
         </div>
+
+        {error && (
+          <p className="text-xs mb-4 px-3 py-2 rounded-md"
+            style={{ maxWidth: '720px', backgroundColor: '#1a0a0a', color: '#f87171', border: '1px solid #3a1010' }}>
+            {error}
+          </p>
+        )}
 
         {loading ? (
           <p className="text-sm" style={{ color: '#444' }}>Cargando...</p>
