@@ -19,6 +19,7 @@ import vinculoRoutes from './routes/vinculo.routes.js'
 import mensajesRoutes from './routes/mensajes.routes.js'
 import comunidadesRoutes from './routes/comunidades.routes.js'
 import registrosRoutes from './routes/registros.routes.js'
+import fotosRoutes from './routes/fotos.routes.js'
 import { startActivityReminderJob } from './services/progress-mail.service.js'
 import { initSocket } from './socket.js'
 
@@ -39,6 +40,7 @@ app.use('/api/vinculos', vinculoRoutes)
 app.use('/api/mensajes', mensajesRoutes)
 app.use('/api/comunidades', comunidadesRoutes)
 app.use('/api/registros', registrosRoutes)
+app.use('/api/fotos', fotosRoutes)
 
 const PORT = process.env.PORT || 3000
 server.listen(PORT, () => {

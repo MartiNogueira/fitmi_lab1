@@ -41,6 +41,7 @@ model Usuario {
   mensajesRecibidos       Mensaje[]           @relation("MensajesRecibidos")
   comunidadesCreadas      Comunidad[]         @relation("ComunidadesCreadas")
   solicitudesComunidad    SolicitudComunidad[] @relation("SolicitudesComunidad")
+  fotosProgreso           FotoProgreso[]
 }
 
 // tipo: "entrenador" | "nutricionista"
@@ -157,6 +158,17 @@ model Mensaje {
   contenido       String
   leido           Boolean  @default(false)
   created_at      DateTime @default(now())
+}
+
+model FotoProgreso {
+  id          Int      @id @default(autoincrement())
+  usuario_id  Int
+  usuario     Usuario  @relation(fields: [usuario_id], references: [id_usuario])
+  url         String
+  public_id   String
+  descripcion String?
+  fecha       DateTime @default(now())
+  created_at  DateTime @default(now())
 }
 
 model Notificacion {

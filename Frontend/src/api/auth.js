@@ -64,6 +64,12 @@ export const createRutina = (data) =>
 export const generarRutinaIA = (data) =>
   api.post('/rutinas/generar-ia', data)
 
+export const generarPlanIA = (data) =>
+  api.post('/planes/generar-ia', data)
+
+export const guardarPlanIA = (data) =>
+  api.post('/planes/guardar-ia', data)
+
 export const updateRutina = (id, data) =>
   api.put(`/rutinas/${id}`, data)
 
@@ -122,6 +128,16 @@ export const getPesoCorporal = () =>
 
 export const registrarPesoCorporal = (peso_kg, fecha) =>
   api.post('/registros/peso-corporal', { peso_kg, fecha })
+
+// Fotos de progreso
+export const getFotos = () =>
+  api.get('/fotos')
+
+export const subirFoto = (formData) =>
+  api.post('/fotos', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+
+export const deleteFoto = (id) =>
+  api.delete(`/fotos/${id}`)
 
 // Comunidades
 export const getComunidades = (search) =>
