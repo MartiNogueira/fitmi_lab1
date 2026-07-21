@@ -442,7 +442,9 @@ export const enviarAvancePorEmail = async (req, res) => {
       return res.status(400).json({ error: 'No tenés profesionales asignados para enviar el avance' })
     }
     res.json({
-      message: `Avance enviado a la casilla de ${result.sent} profesional${result.sent === 1 ? '' : 'es'}`,
+      message: result.devMode
+        ? `Avance generado en modo desarrollo para ${result.sent} profesional${result.sent === 1 ? '' : 'es'}. Configurá SMTP para enviarlo por mail real.`
+        : `Avance enviado a la casilla de ${result.sent} profesional${result.sent === 1 ? '' : 'es'}`,
       ...result,
     })
   } catch (err) {

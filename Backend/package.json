@@ -4,8 +4,10 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon src/app.js",
+    "build": "prisma generate",
     "prisma:generate": "prisma generate",
-    "start": "node src/app.js"
+    "start": "node src/app.js",
+    "start:prod": "prisma migrate deploy && node src/app.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

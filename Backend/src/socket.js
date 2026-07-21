@@ -4,10 +4,16 @@ import prisma from './db/prisma.js'
 
 let io = null
 
+const getAllowedOrigins = () =>
+  (process.env.FRONTEND_URL || 'http://localhost:5173')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+
 export function initSocket(httpServer) {
   io = new Server(httpServer, {
     cors: {
-      origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+      origin: getAllowedOrigins(),
       credentials: true,
     },
   })

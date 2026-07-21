@@ -47,7 +47,7 @@ app.use('/api/registros', registrosRoutes)
 app.use('/api/fotos', fotosRoutes)
 
 const PORT = process.env.PORT || 3000
-const HOST = process.env.HOST || '127.0.0.1'
+const HOST = process.env.HOST || '0.0.0.0'
 server.listen(PORT, HOST, () => {
   console.log(`Fitmi server corriendo en http://${HOST}:${PORT}`)
   console.log('Ruta activa: POST /api/vinculos/:id/desvincular')
