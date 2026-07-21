@@ -20,7 +20,7 @@ function MessageStatus({ message }) {
         marginLeft: '2px',
       }}
     >
-      {message.leido ? '✓✓' : '✓'}
+      ✓✓
     </span>
   )
 }

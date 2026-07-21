@@ -111,7 +111,7 @@ function ChatConversation({ userId }) {
         marginLeft: '2px',
       }}
     >
-      {mensaje.leido ? '✓✓' : '✓'}
+      ✓✓
     </span>
   )
 
