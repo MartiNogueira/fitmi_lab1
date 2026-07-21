@@ -443,7 +443,7 @@ export const enviarAvancePorEmail = async (req, res) => {
     }
     res.json({
       message: result.devMode
-        ? `Avance generado en modo desarrollo para ${result.sent} profesional${result.sent === 1 ? '' : 'es'}. Configurá SMTP para enviarlo por mail real.`
+        ? `Avance generado en modo desarrollo para ${result.sent} profesional${result.sent === 1 ? '' : 'es'}. Configurá Resend o SMTP para enviarlo por mail real.`
         : `Avance enviado a la casilla de ${result.sent} profesional${result.sent === 1 ? '' : 'es'}`,
       ...result,
     })
@@ -462,7 +462,7 @@ export const enviarRecordatoriosInactividad = async (req, res) => {
     const result = await sendInactivityReminders(dias)
     res.json({
       message: result.devMode
-        ? `Recordatorios generados en modo desarrollo: ${result.sent}. Configurá SMTP para enviarlos por mail.`
+        ? `Recordatorios generados en modo desarrollo: ${result.sent}. Configurá Resend o SMTP para enviarlos por mail.`
         : `Recordatorios enviados: ${result.sent}`,
       ...result,
     })
@@ -533,7 +533,7 @@ export const enviarRecordatorioProgreso = async (req, res) => {
 
     res.status(201).json({
       message: delivery.dev
-        ? `Recordatorio generado en modo desarrollo para ${vinculo.usuario.nombre_usuario}. Configurá SMTP para enviarlo por mail.`
+        ? `Recordatorio generado en modo desarrollo para ${vinculo.usuario.nombre_usuario}. Configurá Resend o SMTP para enviarlo por mail.`
         : `Recordatorio enviado por mail a ${vinculo.usuario.nombre_usuario}`,
       devMode: Boolean(delivery.dev),
     })
