@@ -90,11 +90,79 @@ export const desvincularMiVinculo = async (req, res) => {
       return res.status(400).json({ error: 'Solo podés desvincular vínculos activos o pendientes' })
     }
 
-    await prisma.vinculo.delete({ where: { id: vinculoId } })
+    const cleanup = await prisma.$transaction(async (tx) => {
+      const mensajes = await tx.mensaje.deleteMany({
+        where: {
+          OR: [
+            { remitente_id: vinculo.usuario_id, destinatario_id: vinculo.profesional_id },
+            { remitente_id: vinculo.profesional_id, destinatario_id: vinculo.usuario_id },
+          ],
+        },
+      })
+
+      let rutinas = { count: 0 }
+      let ejerciciosCompletados = { count: 0 }
+      let planes = { count: 0 }
+      let comidasCompletadas = { count: 0 }
+
+      if (vinculo.tipo === 'entrenador') {
+        const rutinasAsignadas = await tx.rutina.findMany({
+          where: {
+            usuario_id: vinculo.usuario_id,
+            entrenador_id: vinculo.profesional_id,
+          },
+          select: { id: true },
+        })
+        const rutinaIds = rutinasAsignadas.map((rutina) => rutina.id)
+
+        if (rutinaIds.length > 0) {
+          ejerciciosCompletados = await tx.ejercicioCompletado.deleteMany({
+            where: {
+              usuario_id: vinculo.usuario_id,
+              rutina_id: { in: rutinaIds },
+            },
+          })
+          rutinas = await tx.rutina.deleteMany({ where: { id: { in: rutinaIds } } })
+        }
+      }
+
+      if (vinculo.tipo === 'nutricionista') {
+        const planesAsignados = await tx.planAlimenticio.findMany({
+          where: {
+            usuario_id: vinculo.usuario_id,
+            nutricionista_id: vinculo.profesional_id,
+          },
+          select: { id: true },
+        })
+        const planIds = planesAsignados.map((plan) => plan.id)
+
+        if (planIds.length > 0) {
+          comidasCompletadas = await tx.comidaCompletada.deleteMany({
+            where: {
+              usuario_id: vinculo.usuario_id,
+              plan_id: { in: planIds },
+            },
+          })
+          planes = await tx.planAlimenticio.deleteMany({ where: { id: { in: planIds } } })
+        }
+      }
+
+      await tx.vinculo.delete({ where: { id: vinculoId } })
+
+      return {
+        mensajes: mensajes.count,
+        rutinas: rutinas.count,
+        ejerciciosCompletados: ejerciciosCompletados.count,
+        planes: planes.count,
+        comidasCompletadas: comidasCompletadas.count,
+      }
+    })
+
     res.json({
       message: `Te desvinculaste de ${vinculo.profesional.nombre_usuario}`,
       profesional: vinculo.profesional,
       tipo: vinculo.tipo,
+      cleanup,
     })
   } catch (err) {
     console.error('desvincularMiVinculo:', err)
