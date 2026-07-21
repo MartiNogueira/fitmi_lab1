@@ -102,9 +102,14 @@ function ChatConversation({ userId }) {
 
   const renderEstado = (mensaje) => (
     <span
-      className="text-xs font-bold leading-none"
+      className="font-bold leading-none"
       title={mensaje.leido ? 'Leído' : 'Entregado'}
-      style={{ color: mensaje.leido ? '#0f766e' : '#00000080', letterSpacing: 0 }}
+      style={{
+        color: mensaje.leido ? '#2563eb' : '#00000080',
+        fontSize: '14px',
+        letterSpacing: 0,
+        marginLeft: '2px',
+      }}
     >
       {mensaje.leido ? '✓✓' : '✓'}
     </span>
@@ -156,7 +161,7 @@ function ChatConversation({ userId }) {
                       borderRadius: esMio ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
                     }}>
                     <p className="text-sm" style={{ wordBreak: 'break-word' }}>{m.contenido}</p>
-                    <div className="flex items-center justify-end gap-1 mt-0.5"
+                    <div className="flex items-center justify-end mt-1"
                       style={{ color: esMio ? '#00000066' : '#555' }}>
                       <span className="text-xs">{formatHora(m.created_at)}</span>
                       {esMio && renderEstado(m)}

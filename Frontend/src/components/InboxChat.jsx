@@ -11,9 +11,14 @@ function initials(name) {
 function MessageStatus({ message }) {
   return (
     <span
-      className="text-xs font-bold leading-none"
+      className="font-bold leading-none"
       title={message.leido ? 'Leído' : 'Entregado'}
-      style={{ color: message.leido ? '#0f766e' : '#00000080', letterSpacing: 0 }}
+      style={{
+        color: message.leido ? '#2563eb' : '#00000080',
+        fontSize: '14px',
+        letterSpacing: 0,
+        marginLeft: '2px',
+      }}
     >
       {message.leido ? '✓✓' : '✓'}
     </span>
@@ -180,7 +185,7 @@ export default function InboxChat() {
                           ? { backgroundColor: '#22c55e', color: '#000' }
                           : { backgroundColor: '#111', color: '#fff', border: '1px solid #1a1a1a' }}>
                         <p>{msg.contenido}</p>
-                        <div className="flex items-center justify-end gap-1 mt-1 opacity-60">
+                        <div className="flex items-center justify-end mt-1">
                           <span className="text-xs">
                             {new Date(msg.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
                           </span>
