@@ -553,7 +553,7 @@ export const enviarRecordatorioProgreso = async (req, res) => {
 
     if (emailError) {
       return res.status(201).json({
-        message: `Recordatorio enviado dentro de Fitmi a ${vinculo.usuario.nombre_usuario}. El email no salió por la configuración de Resend.`,
+        message: `Recordatorio enviado dentro de Fitmi a ${vinculo.usuario.nombre_usuario}.`,
         devMode: false,
         emailSent: false,
         emailError,
