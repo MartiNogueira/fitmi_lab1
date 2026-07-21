@@ -515,27 +515,57 @@ export const enviarRecordatorioProgreso = async (req, res) => {
       '<p>Registrá tus entrenamientos o comidas para que pueda hacer seguimiento de tu evolución.</p>',
       '<p>Fitmi</p>',
     ].join('\n')
-    const delivery = await sendMail({
-      to: vinculo.usuario.email,
-      subject,
-      text,
-      html,
+    await prisma.notificacion.create({
+      data: {
+        destinatario_id: vinculo.usuario.id_usuario,
+        tipo: 'recordatorio_progreso',
+        mensaje: `${vinculo.profesional.nombre_usuario} te recuerda que cargues tu progreso.`,
+        data: {
+          profesional_id: vinculo.profesional.id_usuario,
+          profesional_nombre: vinculo.profesional.nombre_usuario,
+          tipo_profesional: vinculo.profesional.rol,
+        },
+      },
     })
+
+    let delivery = null
+    let emailError = null
+    try {
+      delivery = await sendMail({
+        to: vinculo.usuario.email,
+        subject,
+        text,
+        html,
+      })
+    } catch (mailError) {
+      emailError = mailError.message
+      console.warn('enviarRecordatorioProgreso email:', mailError)
+    }
 
     await prisma.emailLog.create({
       data: {
         tipo: 'recordatorio_progreso',
         usuario_id: vinculo.usuario.id_usuario,
         destinatario: vinculo.usuario.email,
-        asunto: subject,
+        asunto: emailError ? `${subject} (email no enviado)` : subject,
       },
     })
 
+    if (emailError) {
+      return res.status(201).json({
+        message: `Recordatorio enviado dentro de Fitmi a ${vinculo.usuario.nombre_usuario}. El email no salió por la configuración de Resend.`,
+        devMode: false,
+        emailSent: false,
+        emailError,
+      })
+    }
+
     res.status(201).json({
-      message: delivery.dev
+      message: delivery?.dev
         ? `Recordatorio generado en modo desarrollo para ${vinculo.usuario.nombre_usuario}. Configurá Resend o SMTP para enviarlo por mail.`
         : `Recordatorio enviado por mail a ${vinculo.usuario.nombre_usuario}`,
-      devMode: Boolean(delivery.dev),
+      devMode: Boolean(delivery?.dev),
+      emailSent: !delivery?.dev,
     })
   } catch (err) {
     console.error('enviarRecordatorioProgreso:', err)
