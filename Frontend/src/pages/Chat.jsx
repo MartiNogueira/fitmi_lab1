@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
-import { Check, CheckCheck } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import AppLayout from '../components/AppLayout'
@@ -101,6 +100,16 @@ function ChatConversation({ userId }) {
     return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
   }
 
+  const renderEstado = (mensaje) => (
+    <span
+      className="text-xs font-bold leading-none"
+      title={mensaje.leido ? 'Leído' : 'Entregado'}
+      style={{ color: mensaje.leido ? '#0f766e' : '#00000080', letterSpacing: 0 }}
+    >
+      {mensaje.leido ? '✓✓' : '✓'}
+    </span>
+  )
+
   let lastDate = null
 
   return (
@@ -150,13 +159,7 @@ function ChatConversation({ userId }) {
                     <div className="flex items-center justify-end gap-1 mt-0.5"
                       style={{ color: esMio ? '#00000066' : '#555' }}>
                       <span className="text-xs">{formatHora(m.created_at)}</span>
-                      {esMio && (
-                        m.leido ? (
-                          <CheckCheck size={14} strokeWidth={2.4} title="Leído" />
-                        ) : (
-                          <Check size={14} strokeWidth={2.4} title="Entregado" />
-                        )
-                      )}
+                      {esMio && renderEstado(m)}
                     </div>
                   </div>
                 </div>

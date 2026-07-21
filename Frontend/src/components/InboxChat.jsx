@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Check, CheckCheck } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import AppLayout from './AppLayout'
@@ -7,6 +6,18 @@ import { getInterlocutores, getConversacion, enviarMensaje } from '../api/auth'
 
 function initials(name) {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+}
+
+function MessageStatus({ message }) {
+  return (
+    <span
+      className="text-xs font-bold leading-none"
+      title={message.leido ? 'Leído' : 'Entregado'}
+      style={{ color: message.leido ? '#0f766e' : '#00000080', letterSpacing: 0 }}
+    >
+      {message.leido ? '✓✓' : '✓'}
+    </span>
+  )
 }
 
 export default function InboxChat() {
@@ -173,13 +184,7 @@ export default function InboxChat() {
                           <span className="text-xs">
                             {new Date(msg.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
                           </span>
-                          {isMine && (
-                            msg.leido ? (
-                              <CheckCheck size={14} strokeWidth={2.4} title="Leído" />
-                            ) : (
-                              <Check size={14} strokeWidth={2.4} title="Entregado" />
-                            )
-                          )}
+                          {isMine && <MessageStatus message={msg} />}
                         </div>
                       </div>
                     </div>
