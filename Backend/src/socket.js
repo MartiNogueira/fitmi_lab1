@@ -35,13 +35,23 @@ export function initSocket(httpServer) {
 
     socket.on('mark_read', async ({ fromUserId }) => {
       try {
+        const senderId = Number(fromUserId)
+        if (!Number.isInteger(senderId)) return
+
+        const unreadMessages = await prisma.mensaje.findMany({
+          where: { remitente_id: senderId, destinatario_id: socket.user.id, leido: false },
+          select: { id: true },
+        })
+        if (unreadMessages.length === 0) return
+
         await prisma.mensaje.updateMany({
-          where: {
-            remitente_id: Number(fromUserId),
-            destinatario_id: socket.user.id,
-            leido: false,
-          },
+          where: { id: { in: unreadMessages.map((mensaje) => mensaje.id) } },
           data: { leido: true },
+        })
+
+        io.to(`user_${senderId}`).emit('mensajes_leidos', {
+          readerId: socket.user.id,
+          messageIds: unreadMessages.map((mensaje) => mensaje.id),
         })
       } catch {}
     })

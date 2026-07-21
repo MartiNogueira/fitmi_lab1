@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
+import { Check, CheckCheck } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import AppLayout from '../components/AppLayout'
@@ -56,6 +57,22 @@ function ChatConversation({ userId }) {
 
     socket.on('nuevo_mensaje', handleNuevoMensaje)
     return () => socket.off('nuevo_mensaje', handleNuevoMensaje)
+  }, [socket, userId])
+
+  useEffect(() => {
+    if (!socket) return
+
+    const handleMensajesLeidos = ({ readerId, messageIds = [] }) => {
+      if (Number(readerId) !== Number(userId)) return
+      setMensajes((prev) =>
+        prev.map((mensaje) =>
+          messageIds.includes(mensaje.id) ? { ...mensaje, leido: true } : mensaje
+        )
+      )
+    }
+
+    socket.on('mensajes_leidos', handleMensajesLeidos)
+    return () => socket.off('mensajes_leidos', handleMensajesLeidos)
   }, [socket, userId])
 
   useEffect(() => {
@@ -130,9 +147,17 @@ function ChatConversation({ userId }) {
                       borderRadius: esMio ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
                     }}>
                     <p className="text-sm" style={{ wordBreak: 'break-word' }}>{m.contenido}</p>
-                    <p className="text-xs mt-0.5 text-right" style={{ color: esMio ? '#00000066' : '#555' }}>
-                      {formatHora(m.created_at)}
-                    </p>
+                    <div className="flex items-center justify-end gap-1 mt-0.5"
+                      style={{ color: esMio ? '#00000066' : '#555' }}>
+                      <span className="text-xs">{formatHora(m.created_at)}</span>
+                      {esMio && (
+                        m.leido ? (
+                          <CheckCheck size={14} strokeWidth={2.4} title="Leído" />
+                        ) : (
+                          <Check size={14} strokeWidth={2.4} title="Entregado" />
+                        )
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

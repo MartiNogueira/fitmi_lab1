@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { Check, CheckCheck } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import AppLayout from './AppLayout'
@@ -68,6 +69,22 @@ export default function InboxChat() {
     socket.on('nuevo_mensaje', handleNuevoMensaje)
     return () => socket.off('nuevo_mensaje', handleNuevoMensaje)
   }, [socket, user?.id, activeUser?.id_usuario])
+
+  useEffect(() => {
+    if (!socket) return
+
+    const handleMensajesLeidos = ({ readerId, messageIds = [] }) => {
+      if (Number(readerId) !== Number(activeUser?.id_usuario)) return
+      setMensajes((prev) =>
+        prev.map((mensaje) =>
+          messageIds.includes(mensaje.id) ? { ...mensaje, leido: true } : mensaje
+        )
+      )
+    }
+
+    socket.on('mensajes_leidos', handleMensajesLeidos)
+    return () => socket.off('mensajes_leidos', handleMensajesLeidos)
+  }, [socket, activeUser?.id_usuario])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -152,9 +169,18 @@ export default function InboxChat() {
                           ? { backgroundColor: '#22c55e', color: '#000' }
                           : { backgroundColor: '#111', color: '#fff', border: '1px solid #1a1a1a' }}>
                         <p>{msg.contenido}</p>
-                        <p className="text-xs mt-1 opacity-60">
-                          {new Date(msg.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-                        </p>
+                        <div className="flex items-center justify-end gap-1 mt-1 opacity-60">
+                          <span className="text-xs">
+                            {new Date(msg.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          {isMine && (
+                            msg.leido ? (
+                              <CheckCheck size={14} strokeWidth={2.4} title="Leído" />
+                            ) : (
+                              <Check size={14} strokeWidth={2.4} title="Entregado" />
+                            )
+                          )}
+                        </div>
                       </div>
                     </div>
                   )

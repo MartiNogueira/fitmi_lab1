@@ -1,6 +1,27 @@
 import prisma from '../db/prisma.js'
 import { getIO } from '../socket.js'
 
+const markConversationAsRead = async ({ fromUserId, readerId }) => {
+  const unreadMessages = await prisma.mensaje.findMany({
+    where: { remitente_id: fromUserId, destinatario_id: readerId, leido: false },
+    select: { id: true },
+  })
+
+  if (unreadMessages.length === 0) return []
+
+  await prisma.mensaje.updateMany({
+    where: { id: { in: unreadMessages.map((mensaje) => mensaje.id) } },
+    data: { leido: true },
+  })
+
+  getIO()?.to(`user_${fromUserId}`).emit('mensajes_leidos', {
+    readerId,
+    messageIds: unreadMessages.map((mensaje) => mensaje.id),
+  })
+
+  return unreadMessages
+}
+
 export const getConversacion = async (req, res) => {
   const { userId } = req.params
   const otherUserId = Number(userId)
@@ -18,10 +39,7 @@ export const getConversacion = async (req, res) => {
       orderBy: { created_at: 'asc' },
     })
     // Marcar como leídos los mensajes que le llegaron al usuario actual
-    await prisma.mensaje.updateMany({
-      where: { remitente_id: otherUserId, destinatario_id: req.user.id, leido: false },
-      data: { leido: true },
-    })
+    await markConversationAsRead({ fromUserId: otherUserId, readerId: req.user.id })
     res.json(mensajes)
   } catch (err) {
     console.error('getConversacion:', err)
