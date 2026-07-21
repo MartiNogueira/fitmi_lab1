@@ -38,10 +38,7 @@ export default function InboxChat() {
 
   useEffect(() => {
     getInterlocutores()
-      .then(({ data }) => {
-        setInterlocutores(data)
-        if (data.length > 0) setActiveUser(data[0])
-      })
+      .then(({ data }) => setInterlocutores(data))
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
