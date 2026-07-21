@@ -58,6 +58,8 @@ export default function App() {
           <Route path="/comunidad" element={<PrivateRoute><Comunidades /></PrivateRoute>} />
           <Route path="/comunidades" element={<PrivateRoute><Comunidades /></PrivateRoute>} />
           <Route path="/mensajes" element={<PrivateRoute><Chat /></PrivateRoute>} />
+          <Route path="/mensajes/:userId" element={<PrivateRoute><Chat /></PrivateRoute>} />
+          <Route path="/chat/:userId" element={<PrivateRoute><Chat /></PrivateRoute>} />
           <Route path="/mi-entrenador" element={<PrivateRoute><MiEntrenador /></PrivateRoute>} />
           <Route path="/mi-nutricionista" element={<PrivateRoute><MiNutricionista /></PrivateRoute>} />
           <Route path="/alimentacion" element={<PrivateRoute><Alimentacion /></PrivateRoute>} />
@@ -65,10 +67,12 @@ export default function App() {
           <Route path="/entrenador/rutinas" element={<PrivateRoute><RutinasEntrenador /></PrivateRoute>} />
           <Route path="/entrenador/solicitudes" element={<PrivateRoute><SolicitudesEntrenador /></PrivateRoute>} />
           <Route path="/entrenador/mensajes" element={<PrivateRoute><Chat /></PrivateRoute>} />
+          <Route path="/entrenador/mensajes/:userId" element={<PrivateRoute><Chat /></PrivateRoute>} />
           <Route path="/nutricionista/pacientes" element={<PrivateRoute><MisPacientes /></PrivateRoute>} />
           <Route path="/nutricionista/planes" element={<PrivateRoute><PlanesAlimenticios /></PrivateRoute>} />
           <Route path="/nutricionista/solicitudes" element={<PrivateRoute><SolicitudesNutricionista /></PrivateRoute>} />
           <Route path="/nutricionista/mensajes" element={<PrivateRoute><Chat /></PrivateRoute>} />
+          <Route path="/nutricionista/mensajes/:userId" element={<PrivateRoute><Chat /></PrivateRoute>} />
           <Route path="/register-profesional" element={<RegisterProfesional />} />
           <Route path="/comunidades/:id" element={<PrivateRoute><Comunidades /></PrivateRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />

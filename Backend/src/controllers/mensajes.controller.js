@@ -3,19 +3,23 @@ import { getIO } from '../socket.js'
 
 export const getConversacion = async (req, res) => {
   const { userId } = req.params
+  const otherUserId = Number(userId)
+  if (!Number.isInteger(otherUserId)) {
+    return res.status(400).json({ error: 'Usuario inválido' })
+  }
   try {
     const mensajes = await prisma.mensaje.findMany({
       where: {
         OR: [
-          { remitente_id: req.user.id, destinatario_id: Number(userId) },
-          { remitente_id: Number(userId), destinatario_id: req.user.id },
+          { remitente_id: req.user.id, destinatario_id: otherUserId },
+          { remitente_id: otherUserId, destinatario_id: req.user.id },
         ],
       },
       orderBy: { created_at: 'asc' },
     })
     // Marcar como leídos los mensajes que le llegaron al usuario actual
     await prisma.mensaje.updateMany({
-      where: { remitente_id: Number(userId), destinatario_id: req.user.id, leido: false },
+      where: { remitente_id: otherUserId, destinatario_id: req.user.id, leido: false },
       data: { leido: true },
     })
     res.json(mensajes)
@@ -27,17 +31,19 @@ export const getConversacion = async (req, res) => {
 
 export const enviarMensaje = async (req, res) => {
   const { userId } = req.params
+  const otherUserId = Number(userId)
   const { contenido } = req.body
+  if (!Number.isInteger(otherUserId)) return res.status(400).json({ error: 'Usuario inválido' })
   if (!contenido?.trim()) return res.status(400).json({ error: 'El mensaje no puede estar vacío' })
   try {
     const mensaje = await prisma.mensaje.create({
       data: {
         remitente_id: req.user.id,
-        destinatario_id: Number(userId),
+        destinatario_id: otherUserId,
         contenido: contenido.trim(),
       },
     })
-    getIO()?.to(`user_${Number(userId)}`).emit('nuevo_mensaje', mensaje)
+    getIO()?.to(`user_${otherUserId}`).emit('nuevo_mensaje', mensaje)
     res.status(201).json(mensaje)
   } catch (err) {
     console.error('enviarMensaje:', err)
@@ -58,23 +64,40 @@ export const getNoLeidos = async (req, res) => {
 
 export const getInterlocutores = async (req, res) => {
   try {
-    const mensajes = await prisma.mensaje.findMany({
-      where: {
-        OR: [{ remitente_id: req.user.id }, { destinatario_id: req.user.id }],
-      },
-      orderBy: { created_at: 'desc' },
-    })
+    const [mensajes, vinculos] = await Promise.all([
+      prisma.mensaje.findMany({
+        where: {
+          OR: [{ remitente_id: req.user.id }, { destinatario_id: req.user.id }],
+        },
+        orderBy: { created_at: 'desc' },
+      }),
+      prisma.vinculo.findMany({
+        where: {
+          estado: 'activo',
+          OR: [{ usuario_id: req.user.id }, { profesional_id: req.user.id }],
+        },
+        include: {
+          usuario: { select: { id_usuario: true, nombre_usuario: true, email: true, rol: true } },
+          profesional: { select: { id_usuario: true, nombre_usuario: true, email: true, rol: true } },
+        },
+      }),
+    ])
     const idsVistos = new Set()
     const interlocutorIds = []
     for (const m of mensajes) {
       const otherId = m.remitente_id === req.user.id ? m.destinatario_id : m.remitente_id
       if (!idsVistos.has(otherId)) { idsVistos.add(otherId); interlocutorIds.push(otherId) }
     }
+    for (const vinculo of vinculos) {
+      const otherId = vinculo.usuario_id === req.user.id ? vinculo.profesional_id : vinculo.usuario_id
+      if (!idsVistos.has(otherId)) { idsVistos.add(otherId); interlocutorIds.push(otherId) }
+    }
     const usuarios = await prisma.usuario.findMany({
       where: { id_usuario: { in: interlocutorIds } },
       select: { id_usuario: true, nombre_usuario: true, email: true, rol: true },
     })
-    res.json(usuarios)
+    const byId = new Map(usuarios.map((usuario) => [usuario.id_usuario, usuario]))
+    res.json(interlocutorIds.map((id) => byId.get(id)).filter(Boolean))
   } catch (err) {
     console.error('getInterlocutores:', err)
     res.status(500).json({ error: 'Error al obtener conversaciones' })

@@ -21,13 +21,16 @@ export function SocketProvider({ children }) {
     }
 
     const apiBase = import.meta.env.VITE_API_URL || '/api'
-    const socketUrl = apiBase.startsWith('http')
-      ? apiBase.replace(/\/api$/, '')
-      : window.location.origin
+    const socketUrl = import.meta.env.VITE_SOCKET_URL
+      || (apiBase.startsWith('http')
+        ? apiBase.replace(/\/api\/?$/, '')
+        : import.meta.env.DEV
+          ? 'http://127.0.0.1:3000'
+          : window.location.origin)
 
     const s = io(socketUrl, {
       auth: { token },
-      transports: ['websocket', 'polling'],
+      transports: ['websocket'],
     })
 
     socketRef.current = s

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useSocket } from '../context/SocketContext'
 import AppLayout from './AppLayout'
 import { getInterlocutores, getConversacion, enviarMensaje } from '../api/auth'
 
@@ -9,6 +10,7 @@ function initials(name) {
 
 export default function InboxChat() {
   const { user } = useAuth()
+  const socket = useSocket()
   const [interlocutores, setInterlocutores] = useState([])
   const [activeUser, setActiveUser] = useState(null)
   const [mensajes, setMensajes] = useState([])
@@ -16,7 +18,6 @@ export default function InboxChat() {
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const bottomRef = useRef(null)
-  const intervalRef = useRef(null)
 
   useEffect(() => {
     getInterlocutores()
@@ -38,10 +39,35 @@ export default function InboxChat() {
   useEffect(() => {
     if (!activeUser) return
     cargarMensajes(activeUser.id_usuario)
-    clearInterval(intervalRef.current)
-    intervalRef.current = setInterval(() => cargarMensajes(activeUser.id_usuario), 3000)
-    return () => clearInterval(intervalRef.current)
   }, [activeUser, cargarMensajes])
+
+  useEffect(() => {
+    if (!socket) return
+
+    const handleNuevoMensaje = (mensaje) => {
+      const otherId = mensaje.remitente_id === user?.id ? mensaje.destinatario_id : mensaje.remitente_id
+
+      setInterlocutores((prev) => {
+        const current = prev.find((u) => u.id_usuario === otherId)
+        if (!current) return prev
+        return [current, ...prev.filter((u) => u.id_usuario !== otherId)]
+      })
+
+      if (activeUser?.id_usuario !== otherId) return
+
+      setMensajes((prev) => {
+        if (prev.some((m) => m.id === mensaje.id)) return prev
+        return [...prev, mensaje]
+      })
+
+      if (mensaje.remitente_id === otherId) {
+        socket.emit('mark_read', { fromUserId: otherId })
+      }
+    }
+
+    socket.on('nuevo_mensaje', handleNuevoMensaje)
+    return () => socket.off('nuevo_mensaje', handleNuevoMensaje)
+  }, [socket, user?.id, activeUser?.id_usuario])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })

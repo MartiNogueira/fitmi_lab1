@@ -3,10 +3,16 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import AppLayout from '../components/AppLayout'
+import InboxChat from '../components/InboxChat'
 import { getConversacion, enviarMensaje } from '../api/auth'
 
 export default function Chat() {
   const { userId } = useParams()
+  if (!userId) return <InboxChat />
+  return <ChatConversation userId={userId} />
+}
+
+function ChatConversation({ userId }) {
   const { state } = useLocation()
   const { user } = useAuth()
   const socket = useSocket()
