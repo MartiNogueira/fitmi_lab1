@@ -1,6 +1,8 @@
 import nodemailer from 'nodemailer'
+import { Resend } from 'resend'
 
 let transporter
+let resendClient
 
 const resendConfigured = () => Boolean(process.env.RESEND_API_KEY)
 
@@ -23,38 +25,37 @@ const getTransporter = () => {
   return transporter
 }
 
-const sendWithResend = async (mail) => {
-  const response = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-      'Content-Type': 'application/json',
-      'User-Agent': 'fitmi-backend',
-    },
-    body: JSON.stringify(mail),
-  })
+const getResendClient = () => {
+  if (!resendConfigured()) return null
+  if (!resendClient) {
+    resendClient = new Resend(process.env.RESEND_API_KEY)
+  }
+  return resendClient
+}
 
-  const data = await response.json().catch(() => ({}))
-  if (!response.ok) {
-    const message = data?.message || data?.error || `Resend error ${response.status}`
-    throw new Error(message)
+const sendWithResend = async (mail) => {
+  const resend = getResendClient()
+  const { data, error } = await resend.emails.send(mail)
+
+  if (error) {
+    throw new Error(error.message || 'Error al enviar email con Resend')
   }
 
   return {
     provider: 'resend',
-    messageId: data.id,
+    messageId: data?.id,
     accepted: Array.isArray(mail.to) ? mail.to : [mail.to],
     rejected: [],
   }
 }
 
-export const sendMail = async ({ to, subject, text, html }) => {
+export const sendMail = async ({ to, subject, text, html, attachments }) => {
   const from =
     process.env.RESEND_FROM ||
     process.env.SMTP_FROM ||
     process.env.SMTP_USER ||
     'Fitmi <no-reply@fitmi.local>'
-  const mail = { from, to, subject, text, html }
+  const mail = { from, to, subject, text, html, attachments }
 
   if (resendConfigured()) {
     return sendWithResend(mail)
